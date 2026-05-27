@@ -1,0 +1,77 @@
+version: "3.9"
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  db:
+    image: postgres:16-alpine
+    container_name: store-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-store_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-store_password123}
+      POSTGRES_DB: ${DB_NAME:-store_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-store_user} -d ${DB_NAME:-store_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - store-network
+
+  # ============================================
+  # Next.js Application
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: store-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      # Database
+      DATABASE_URL: "postgresql://${DB_USER:-store_user}:${DB_PASSWORD:-store_password123}@db:5432/${DB_NAME:-store_db}?schema=public"
+      
+      # Run migrations on startup
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      
+      # JWT Secrets (MUST be overridden in production!)
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      
+      # App Config
+      NODE_ENV: ${NODE_ENV:-production}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      
+      # Admin
+      ADMIN_PATH_PREFIX: ${ADMIN_PATH_PREFIX:-mx-panel}
+      ADMIN_IP_ALLOWLIST: ${ADMIN_IP_ALLOWLIST:-}
+      
+      # Proxy Config
+      TRUSTED_IP_HEADER: ${TRUSTED_IP_HEADER:-}
+      BEHIND_REVERSE_PROXY: ${BEHIND_REVERSE_PROXY:-false}
+      
+      # Cron
+      CRON_SECRET: ${CRON_SECRET}
+    networks:
+      - store-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  store-network:
+    driver: bridge

@@ -30,10 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (NEVER commit these!)
 .env
 .env.local
 .env.production
+.env.*.local
 
 # vercel
 .vercel
@@ -42,4 +43,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# generated prisma client
 /src/generated/prisma
+
+# Docker volumes
+postgres_data/
