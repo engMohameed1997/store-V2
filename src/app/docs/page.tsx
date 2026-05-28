@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import "swagger-ui-react/swagger-ui.css";
+import "./swagger-light.css";
 
 const SwaggerUI = dynamic(() => import("swagger-ui-react"), {
   ssr: false,
   loading: () => (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontFamily: "sans-serif", color: "#555" }}>
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontFamily: "sans-serif", background: "#fff", color: "#555" }}>
       Loading API docs...
     </div>
   ),
@@ -14,7 +15,7 @@ const SwaggerUI = dynamic(() => import("swagger-ui-react"), {
 
 export default function DocsPage() {
   return (
-    <div style={{ flex: 1 }}>
+    <div className="swagger-ui-wrapper">
       <SwaggerUI
         url="/api/v1/swagger.json"
         docExpansion="list"
