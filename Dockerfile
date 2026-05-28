@@ -25,16 +25,16 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build Next.js
+# Build Next.js (standalone output)
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ============================================
-# Stage 3: Production
+# Stage 3: Production (standalone)
 # ============================================
 FROM node:20-alpine AS runner
 
-RUN apk add --no-cache libc6-compat openssl curl
+RUN apk add --no-cache libc6-compat openssl curl netcat-openbsd
 
 WORKDIR /app
 
@@ -45,15 +45,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy necessary files
+# Copy public assets
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
 
-# Copy standalone output if available, otherwise full build
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
+# Copy standalone server (includes only needed node_modules)
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# Copy static assets
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Copy Prisma files for migrations
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/src/generated ./src/generated
@@ -76,4 +78,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:3000/api/v1/products?limit=1 || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["node_modules/.bin/next", "start"]
+CMD ["node", "server.js"]

@@ -35,7 +35,7 @@ fi
 # ============================================
 if [ "$RUN_MIGRATIONS" = "true" ]; then
   echo "📦 Running database migrations..."
-  npx prisma migrate deploy
+  node_modules/.bin/prisma migrate deploy
   echo "✅ Migrations complete!"
 fi
 

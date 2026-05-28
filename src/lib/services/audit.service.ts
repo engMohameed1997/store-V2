@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import type { AuditAction } from "@/generated/prisma";
+import type { AuditAction } from "@/generated/prisma/client";
 
 export class AuditService {
   static async log(data: {

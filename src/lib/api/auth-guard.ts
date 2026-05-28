@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { verifyAccessToken, TokenPayload } from "./jwt";
 import { Errors } from "./errors";
-import { UserRole } from "@/generated/prisma";
+import { UserRole } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
 export interface AuthUser {
