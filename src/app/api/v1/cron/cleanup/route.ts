@@ -17,8 +17,8 @@ function verifyCronAuth(request: NextRequest): boolean {
   return false;
 }
 
-async function handleCleanup(request: NextRequest) {
-  const rateLimited = checkRateLimit(request, "strict");
+async function handleCleanup(request: NextRequest): Promise<NextResponse> {
+  const rateLimited = await checkRateLimit(request, "strict");
   if (rateLimited) return rateLimited;
 
   if (!verifyCronAuth(request)) {

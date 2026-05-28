@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
+import type { DiscountType, CouponScope } from "@/generated/prisma/client";
 
 export class CouponService {
   static async validate(
@@ -115,9 +116,9 @@ export class CouponService {
   static async create(input: {
     code: string;
     description?: string;
-    discountType: string;
+    discountType: DiscountType;
     discountValue: number;
-    scope?: string;
+    scope?: CouponScope;
     minOrderAmount?: number;
     maxDiscount?: number;
     usageLimit?: number;
@@ -167,9 +168,9 @@ export class CouponService {
   static async update(id: string, input: {
     code?: string;
     description?: string;
-    discountType?: string;
+    discountType?: DiscountType;
     discountValue?: number;
-    scope?: string;
+    scope?: CouponScope;
     minOrderAmount?: number;
     maxDiscount?: number;
     usageLimit?: number;

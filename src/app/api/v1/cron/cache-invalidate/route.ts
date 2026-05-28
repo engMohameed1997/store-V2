@@ -15,8 +15,8 @@ function verifyCronAuth(request: NextRequest): boolean {
   return false;
 }
 
-async function handleCacheInvalidate(request: NextRequest) {
-  const rateLimited = checkRateLimit(request, "strict");
+async function handleCacheInvalidate(request: NextRequest): Promise<NextResponse> {
+  const rateLimited = await checkRateLimit(request, "strict");
   if (rateLimited) return rateLimited;
 
   if (!verifyCronAuth(request)) {

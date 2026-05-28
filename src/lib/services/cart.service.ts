@@ -50,22 +50,20 @@ export class CartService {
       });
     }
 
+    // Non-null guaranteed after create above
+    const resolvedCart = cart;
+
     // Remove stale items (inactive/deleted products or variants)
-    const staleItems = cart.items.filter(
-      (item: (typeof cart.items)[number]) =>
-        !item.product.isActive || (item.variant && !item.variant.isActive)
-    );
-    if (staleItems.length > 0) {
-      await db.cartItem.deleteMany({
-        where: { id: { in: staleItems.map((i: (typeof staleItems)[number]) => i.id) } },
-      });
-      cart = (await db.cart.findUnique({
-        where: { userId },
-        include: CART_INCLUDE,
-      }))!;
+    const staleIds = resolvedCart.items
+      .filter((item) => !item.product.isActive || (item.variant && !item.variant.isActive))
+      .map((item) => item.id);
+
+    if (staleIds.length > 0) {
+      await db.cartItem.deleteMany({ where: { id: { in: staleIds } } });
+      return (await db.cart.findUnique({ where: { userId }, include: CART_INCLUDE }))!;
     }
 
-    return cart;
+    return resolvedCart;
   }
 
   static async addItem(userId: string, input: AddToCartInput) {

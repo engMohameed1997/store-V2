@@ -89,10 +89,20 @@ export class AuthService {
     meta: { ipAddress: string; userAgent: string }
   ) {
     const isEmail = input.identifier.includes("@");
+
+    // Normalize Iraqi phone to E.164 format (+964XXXXXXXXX) before lookup
+    let lookupIdentifier = input.identifier;
+    if (!isEmail) {
+      const cleaned = input.identifier.replace(/^(\+964|00964|0)/, "");
+      if (/^7[3-9]\d{8}$/.test(cleaned)) {
+        lookupIdentifier = `+964${cleaned}`;
+      }
+    }
+
     const user = await db.user.findFirst({
       where: isEmail
-        ? { email: input.identifier }
-        : { phone: input.identifier },
+        ? { email: lookupIdentifier }
+        : { phone: lookupIdentifier },
     });
 
     if (!user) throw Errors.invalidCredentials();
@@ -313,8 +323,16 @@ export class AuthService {
 
   static async forgotPassword(identifier: string) {
     const isEmail = identifier.includes("@");
+
+    // Normalize Iraqi phone before lookup
+    let lookupIdentifier = identifier;
+    if (!isEmail) {
+      const cleaned = identifier.replace(/^(\+964|00964|0)/, "");
+      if (/^7[3-9]\d{8}$/.test(cleaned)) lookupIdentifier = `+964${cleaned}`;
+    }
+
     const user = await db.user.findFirst({
-      where: isEmail ? { email: identifier } : { phone: identifier },
+      where: isEmail ? { email: lookupIdentifier } : { phone: lookupIdentifier },
     });
 
     // Always return success to prevent user enumeration
