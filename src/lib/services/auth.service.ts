@@ -361,6 +361,55 @@ export class AuthService {
     return { message: "If the account exists, reset instructions were sent" };
   }
 
+  static async resendOtp(phone: string) {
+    const user = await db.user.findUnique({ where: { phone } });
+    // Prevent enumeration – always return same message
+    if (!user) return { message: "If the phone number is valid, a new code was sent" };
+
+    await this.sendPhoneOtp(phone, user.id);
+    return { message: "If the phone number is valid, a new code was sent" };
+  }
+
+  static async verifyEmail(tokenStr: string) {
+    const tokenHash = hashToken(tokenStr);
+
+    const verification = await db.emailVerification.findFirst({
+      where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
+    });
+
+    if (!verification) throw Errors.badRequest("Invalid or expired verification link");
+
+    await db.emailVerification.update({
+      where: { id: verification.id },
+      data: { usedAt: new Date() },
+    });
+
+    if (verification.userId) {
+      await db.user.update({
+        where: { id: verification.userId },
+        data: { emailVerified: true, status: "ACTIVE" },
+      });
+    }
+
+    return { verified: true };
+  }
+
+  static async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await db.user.findUnique({ where: { id: userId } });
+    if (!user || !user.passwordHash) throw Errors.badRequest("Cannot change password");
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw Errors.badRequest("Current password is incorrect");
+
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await db.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: "Password changed successfully" };
+  }
+
   static async resetPassword(tokenStr: string, newPassword: string) {
     const tokenHash = hashToken(tokenStr);
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);

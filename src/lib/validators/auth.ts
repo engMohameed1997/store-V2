@@ -72,6 +72,14 @@ export const changePasswordSchema = z.object({
   newPassword: strongPassword,
 });
 
+export const resendOtpSchema = z.object({
+  phone: iraqiPhone,
+});
+
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, "Token required"),
+});
+
 export type RegisterByPhoneInput = z.infer<typeof registerByPhoneSchema>;
 export type RegisterByEmailInput = z.infer<typeof registerByEmailSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -80,3 +88,5 @@ export type VerifyPhoneInput = z.infer<typeof verifyPhoneSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ResendOtpInput = z.infer<typeof resendOtpSchema>;
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
