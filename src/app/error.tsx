@@ -1,7 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect } from 'react';
+import Link from 'next/link';
+import { RefreshCw, Home } from 'lucide-react';
 
 export default function GlobalError({
   error,
@@ -11,27 +12,31 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[GlobalError]", error);
+    console.error('App error:', error);
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 text-center">
-      <div className="space-y-2">
-        <h1 className="text-7xl font-bold tracking-tighter text-foreground">
-          500
-        </h1>
-        <p className="text-lg text-muted-foreground">
-          حدث خطأ غير متوقع
+    <div className="min-h-[70vh] flex items-center justify-center px-4">
+      <div className="text-center max-w-md">
+        <div className="text-6xl mb-4 select-none">⚠️</div>
+        <h1 className="text-2xl font-bold text-foreground mb-2">حدث خطأ</h1>
+        <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
+          عذراً، حدث خطأ غير متوقع أثناء تحميل الصفحة. يرجى المحاولة مرة أخرى.
         </p>
-        {process.env.NODE_ENV === "development" && (
-          <p className="mx-auto max-w-md text-sm text-destructive">
-            {error.message}
-          </p>
-        )}
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={reset}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-primary-foreground rounded-xl font-bold transition-all hover:shadow-lg text-sm"
+          >
+            <RefreshCw size={16} />
+            إعادة المحاولة
+          </button>
+          <Link href="/" className="flex items-center gap-2 px-5 py-2.5 bg-card border border-border hover:border-primary text-foreground rounded-xl font-medium transition text-sm">
+            <Home size={16} />
+            الرئيسية
+          </Link>
+        </div>
       </div>
-      <Button onClick={reset} variant="default">
-        إعادة المحاولة
-      </Button>
     </div>
   );
 }

@@ -88,6 +88,46 @@ function handleCors(request: NextRequest, response: NextResponse): NextResponse 
   return response;
 }
 
+// Auth pages that authenticated users should NOT access (redirect to /)
+const AUTH_GUEST_ONLY: string[] = ["/login", "/register", "/forgot-password"];
+
+// Auth pages that require specific conditions (handled individually below)
+// verify-email: needs session | verify-phone: needs phone param | reset-password: guest only
+
+function isAuthenticated(request: NextRequest): boolean {
+  return !!request.cookies.get("refreshToken")?.value;
+}
+
+function handleAuthRoutes(request: NextRequest): NextResponse | null {
+  const { pathname, searchParams } = request.nextUrl;
+  const hasSession = isAuthenticated(request);
+
+  // Authenticated users should not access login/register/forgot-password
+  if (AUTH_GUEST_ONLY.includes(pathname) && hasSession) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Conditional pages: verify-phone requires phone param or session
+  if (pathname === "/verify-phone") {
+    const hasPhone = !!searchParams.get("phone");
+    if (!hasPhone && !hasSession) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
+
+  // Conditional pages: verify-email requires session (user just registered)
+  if (pathname === "/verify-email" && !hasSession) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Conditional pages: reset-password - logged in users don't need it
+  if (pathname === "/reset-password" && hasSession) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  return null;
+}
+
 export function middleware(request: NextRequest) {
   if (request.method === "OPTIONS") {
     const response = new NextResponse(null, { status: 204 });
@@ -98,6 +138,12 @@ export function middleware(request: NextRequest) {
   if (isAdminRoute(request.nextUrl.pathname)) {
     const blocked = checkAdminIpAllowlist(request);
     if (blocked) return blocked;
+  }
+
+  // Frontend auth route protection (non-API routes only)
+  if (!isApiRoute(request.nextUrl.pathname)) {
+    const authRedirect = handleAuthRoutes(request);
+    if (authRedirect) return authRedirect;
   }
 
   const response = NextResponse.next();
