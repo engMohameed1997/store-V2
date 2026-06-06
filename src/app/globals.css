@@ -143,14 +143,126 @@
   }
 }
 
+/* ======= SCROLLBAR ======= */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ======= HEADER ======= */
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  color: rgba(255, 255, 255, 0.9);
+}
+.header-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* ======= PRODUCT CARD ======= */
+.product-card {
+  background: var(--card);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.product-card:hover {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+/* ======= SCROLL BUTTONS ======= */
+.scroll-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--foreground);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+@media (min-width: 768px) {
+  .scroll-btn { display: flex; }
+}
+.scroll-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  transform: scale(1.1);
+}
+
+/* ======= FEATURE CARDS ======= */
+.feature-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+/* ======= PROMO BANNER ======= */
+.promo-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  padding: 2rem;
+  color: white;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+@media (min-width: 768px) {
+  .promo-banner { padding: 3rem; }
+}
+.promo-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 60%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.promo-banner::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 40%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.04) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
 /* ======= ANIMATIONS ======= */
 @keyframes slide-down {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes slide-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+@keyframes bounce-sm {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
 .animate-slide-down { animation: slide-down 0.2s ease-out; }
+.animate-slide-right { animation: slide-right 0.3s ease-out; }
 .animate-fade-in { animation: fade-in 0.3s ease-out; }
+.animate-bounce-sm { animation: bounce-sm 0.5s ease-out; }
