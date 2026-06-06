@@ -6,7 +6,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.tri
 
 const ADMIN_PATH_PREFIX = process.env.ADMIN_PATH_PREFIX || "mx-panel";
 
-const ADMIN_IP_ALLOWLIST = process.env.ADMIN_IP_ALLOWLIST?.split(",").map((ip) => ip.trim()) || [];
+const ADMIN_IP_ALLOWLIST = process.env.ADMIN_IP_ALLOWLIST?.split(",").map((ip) => ip.trim()).filter(Boolean) || [];
 
 function isAdminRoute(pathname: string): boolean {
   return pathname.includes(`/api/v1/${ADMIN_PATH_PREFIX}`);
@@ -54,15 +54,19 @@ function checkAdminIpAllowlist(request: NextRequest): NextResponse | null {
   return null;
 }
 
-const SECURITY_HEADERS = {
+const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "X-XSS-Protection": "1; mode=block",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-  "Content-Security-Policy":
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self';",
+  ...(process.env.NODE_ENV === "production"
+    ? {
+        "Content-Security-Policy":
+          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self';",
+      }
+    : {}),
 };
 
 function isApiRoute(pathname: string): boolean {

@@ -80,8 +80,8 @@ export const authClient = {
     return postJson(`${AUTH_BASE}/resend-otp`, { phone });
   },
 
-  refresh(): Promise<ApiResult<{ accessToken: string }>> {
-    return postJson<{ accessToken: string }>(`${AUTH_BASE}/refresh`);
+  refresh(): Promise<ApiResult<{ accessToken: string; user: AuthUser }>> {
+    return postJson<{ accessToken: string; user: AuthUser }>(`${AUTH_BASE}/refresh`);
   },
 
   logout(token: string): Promise<ApiResult> {

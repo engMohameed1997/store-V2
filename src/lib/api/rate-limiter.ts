@@ -55,22 +55,6 @@ async function incrementRateLimitEntry(key: string): Promise<void> {
   });
 }
 
-// Atomic upsert to prevent race conditions on concurrent requests
-async function upsertRateLimitEntry(
-  key: string,
-  windowMs: number
-): Promise<{ count: number; resetAt: number }> {
-  const now = new Date();
-  const resetAt = new Date(now.getTime() + windowMs);
-
-  const entry = await db.rateLimitEntry.upsert({
-    where: { key },
-    create: { key, count: 1, resetAt },
-    update: { count: { increment: 1 } },
-  });
-
-  return { count: entry.count, resetAt: entry.resetAt.getTime() };
-}
 
 async function cleanupOldEntries(): Promise<void> {
   const now = new Date();
@@ -96,30 +80,15 @@ export async function checkRateLimit(
 
   const existing = await getRateLimitEntry(key, config.windowMs);
 
-  // If entry doesn't exist or is expired, use upsert for atomic create/increment
+  // If entry doesn't exist or is expired, delete old and create fresh
   if (!existing || existing.resetAt <= now) {
-    const result = await upsertRateLimitEntry(key, config.windowMs);
-    // If this was a new entry (count = 1), allow the request
-    if (result.count === 1) {
-      return null;
-    }
-    // If entry existed but was expired, check if we're over limit
-    if (result.count > config.maxRequests) {
-      const retryAfter = Math.ceil((result.resetAt - now) / 1000);
-      const response = apiError(
-        "RATE_LIMITED",
-        `Too many requests. Retry after ${retryAfter}s`,
-        429
-      );
-      response.headers.set("Retry-After", String(retryAfter));
-      response.headers.set("X-RateLimit-Limit", String(config.maxRequests));
-      response.headers.set("X-RateLimit-Remaining", "0");
-      response.headers.set("X-RateLimit-Reset", String(result.resetAt));
-      return response;
-    }
-    return null;
+    // Remove stale entry if it exists, then create a new window
+    await db.rateLimitEntry.deleteMany({ where: { key } });
+    await createRateLimitEntry(key, config.windowMs);
+    return null; // First request in new window - always allow
   }
 
+  // Entry exists and is still active - increment counter
   await incrementRateLimitEntry(key);
   const count = existing.count + 1;
 

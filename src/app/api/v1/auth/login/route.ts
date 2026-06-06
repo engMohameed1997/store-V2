@@ -27,7 +27,7 @@ export const POST = publicRoute(async (request: NextRequest) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: "/api/v1/auth",
+    path: "/",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   });
 

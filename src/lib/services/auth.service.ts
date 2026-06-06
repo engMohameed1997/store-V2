@@ -197,7 +197,7 @@ export class AuthService {
 
     const user = await db.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, role: true, status: true },
+      select: { id: true, role: true, status: true, email: true, phone: true, firstName: true, lastName: true, avatar: true },
     });
 
     if (!user || user.status === "BANNED") {
@@ -214,7 +214,19 @@ export class AuthService {
 
     await storeRefreshToken(user.id, newRefreshToken, payload.family!, meta);
 
-    return { accessToken, refreshToken: newRefreshToken };
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    };
   }
 
   static async logout(refreshToken: string) {

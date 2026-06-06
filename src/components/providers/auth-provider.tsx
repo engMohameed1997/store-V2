@@ -56,12 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
     const result = await authClient.refresh();
-    if (result.success && result.data?.accessToken) {
-      setState((prev) => ({
-        ...prev,
+    if (result.success && result.data?.accessToken && result.data?.user) {
+      setState({
+        user: result.data.user,
         accessToken: result.data.accessToken,
+        isAuthenticated: true,
         isLoading: false,
-      }));
+      });
       return true;
     }
     clearAuth();

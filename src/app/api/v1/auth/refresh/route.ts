@@ -16,14 +16,14 @@ export const POST = publicRoute(async (request: NextRequest) => {
     userAgent: getUserAgent(request),
   });
 
-  const response = apiSuccess({ accessToken: result.accessToken });
+  const response = apiSuccess({ accessToken: result.accessToken, user: result.user });
 
   // Set new refresh token in HttpOnly cookie
   response.cookies.set("refreshToken", result.refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: "/api/v1/auth",
+    path: "/",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   });
 
