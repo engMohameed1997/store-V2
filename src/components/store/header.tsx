@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, ShoppingCart, Heart, User, Menu, X, ChevronDown, LogOut } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Search, ShoppingCart, Heart, User, Menu, X, ChevronDown, LogOut, Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { useAuth } from '@/components/providers/auth-provider';
 import type { CategoryWithChildren } from '@/lib/types/store';
 
 export default function Header() {
@@ -13,6 +14,11 @@ export default function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
   const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const { isAuthenticated, user, logout } = useAuth();
+
+  useEffect(() => setMounted(true), []);
   const megaRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +101,15 @@ export default function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-1.5">
-            <ThemeToggle />
+            {mounted && (
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="header-icon-btn"
+                title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+              >
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+            )}
 
             {/* User Menu */}
             <div className="relative" ref={userMenuRef}>
@@ -105,24 +119,53 @@ export default function Header() {
                 title="حسابي"
               >
                 <User size={20} />
-                <span className="hidden lg:inline text-xs">الحساب</span>
+                <span className="hidden lg:inline text-xs">
+                  {isAuthenticated ? user?.firstName : 'الحساب'}
+                </span>
               </button>
               {userMenuOpen && (
                 <div className="absolute top-full left-0 mt-2 w-48 bg-card rounded-xl shadow-2xl border border-border py-2 z-50 animate-slide-down">
-                  <Link
-                    href="/login"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="block px-4 py-2.5 text-sm text-foreground hover:bg-primary/5 transition"
-                  >
-                    تسجيل الدخول
-                  </Link>
-                  <Link
-                    href="/register"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="block px-4 py-2.5 text-sm text-foreground hover:bg-primary/5 transition"
-                  >
-                    إنشاء حساب
-                  </Link>
+                  {isAuthenticated ? (
+                    <>
+                      <Link
+                        href="/account"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-2.5 text-sm text-foreground hover:bg-primary/5 transition"
+                      >
+                        الملف الشخصي
+                      </Link>
+                      <Link
+                        href="/account/orders"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-2.5 text-sm text-foreground hover:bg-primary/5 transition"
+                      >
+                        طلباتي
+                      </Link>
+                      <button
+                        onClick={() => { logout(); setUserMenuOpen(false); }}
+                        className="block w-full text-right px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition"
+                      >
+                        تسجيل الخروج
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/login"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-2.5 text-sm text-foreground hover:bg-primary/5 transition"
+                      >
+                        تسجيل الدخول
+                      </Link>
+                      <Link
+                        href="/register"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-2.5 text-sm text-foreground hover:bg-primary/5 transition"
+                      >
+                        إنشاء حساب
+                      </Link>
+                    </>
+                  )}
                 </div>
               )}
             </div>
