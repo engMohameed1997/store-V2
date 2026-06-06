@@ -125,6 +125,11 @@ function handleAuthRoutes(request: NextRequest): NextResponse | null {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
+  // Admin panel: requires authentication (role check is done client-side via AdminGuard)
+  if (pathname.startsWith("/mx-panel") && !hasSession) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   return null;
 }
 
