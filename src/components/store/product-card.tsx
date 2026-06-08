@@ -1,8 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Heart, Star, Eye } from 'lucide-react';
+import { ShoppingCart, Heart, Star, Eye, Loader2 } from 'lucide-react';
 import type { ProductListItem } from '@/lib/types/store';
+import { useState } from 'react';
+import { useAuth } from '@/components/providers/auth-provider';
+import { postJson } from '@/lib/client/api';
+import { toast } from 'sonner';
 
 interface Props {
   product: ProductListItem;
@@ -29,6 +33,34 @@ export default function ProductCard({ product }: Props) {
   const discount = getDiscount(price, compareAtPrice);
   const rating = typeof product.avgRating === 'string' ? parseFloat(product.avgRating) : product.avgRating;
   const primaryImage = product.images?.[0];
+
+  const { isAuthenticated, accessToken } = useAuth();
+  const [addingToCart, setAddingToCart] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      toast.error('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+    setAddingToCart(true);
+    try {
+      const res = await postJson('/api/v1/cart', {
+        productId: product.id,
+        quantity: 1,
+      }, { token: accessToken! });
+      
+      if (res.success) {
+        toast.success('تمت الإضافة إلى السلة');
+      } else {
+        toast.error(!res.success ? res.error.message : 'حدث خطأ');
+      }
+    } catch (err) {
+      toast.error('حدث خطأ');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
 
   return (
     <div className="product-card group">
@@ -123,11 +155,12 @@ export default function ProductCard({ product }: Props) {
 
       {/* Add to Cart */}
       <button
-        disabled={product.stock === 0}
+        onClick={handleAddToCart}
+        disabled={product.stock === 0 || addingToCart}
         className="w-full py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:shadow-none"
       >
-        <ShoppingCart size={15} />
-        {product.stock === 0 ? 'غير متوفر' : 'أضف إلى السلة'}
+        {addingToCart ? <Loader2 size={15} className="animate-spin" /> : <ShoppingCart size={15} />}
+        {addingToCart ? 'جاري الإضافة...' : product.stock === 0 ? 'غير متوفر' : 'أضف إلى السلة'}
       </button>
     </div>
   );

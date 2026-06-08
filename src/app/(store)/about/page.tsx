@@ -8,7 +8,7 @@ export default function AboutPage() {
       {/* Hero */}
       <div className="bg-card rounded-2xl border border-border p-8 mb-8 text-center">
         <h2 className="text-2xl font-bold text-foreground mb-3">
-          <span className="text-primary">الـ</span>متجر
+          <span className="text-primary">الـ</span>خزاعي
         </h2>
         <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
           متجرك الإلكتروني الأول في العراق. نسعى لتوفير أفضل المنتجات بأسعار منافسة

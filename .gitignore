@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Docker volumes
 postgres_data/
+
+# User uploads
+/public/uploads/

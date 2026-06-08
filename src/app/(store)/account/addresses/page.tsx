@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { MapPin, Plus, Trash2, Star } from 'lucide-react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { MapPin, Plus, Trash2, Star, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson, postJson, deleteJson } from '@/lib/client/api';
 import { toast } from 'sonner';
+
+interface LocationData {
+  name: string;
+  districts: { name: string; subDistricts: string[] }[];
+}
 
 interface Address {
   id: string;
@@ -14,6 +19,7 @@ interface Address {
   governorate: string;
   city: string;
   district: string | null;
+  nearestPoint: string | null;
   street: string | null;
   building: string | null;
   landmark: string | null;
@@ -26,9 +32,33 @@ export default function AddressesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [locations, setLocations] = useState<LocationData[]>([]);
   const [form, setForm] = useState({
-    fullName: '', phone: '', governorate: '', city: '', district: '', street: '', landmark: '', isDefault: false,
+    fullName: '', phone: '', governorate: '', city: '', district: '', nearestPoint: '', street: '', landmark: '', isDefault: false,
   });
+
+  // Fetch locations data
+  useEffect(() => {
+    getJson<{ governorates: LocationData[] }>('/api/v1/locations').then((res) => {
+      if (res.success && res.data) {
+        setLocations((res.data as { governorates: LocationData[] }).governorates);
+      }
+    });
+  }, []);
+
+  // Get districts for selected governorate
+  const availableDistricts = useMemo(() => {
+    if (!form.governorate) return [];
+    const gov = locations.find((g) => g.name === form.governorate);
+    return gov ? gov.districts : [];
+  }, [form.governorate, locations]);
+
+  // Get sub-districts for selected district
+  const availableSubDistricts = useMemo(() => {
+    if (!form.city) return [];
+    const district = availableDistricts.find((d) => d.name === form.city);
+    return district ? district.subDistricts : [];
+  }, [form.city, availableDistricts]);
 
   const fetchAddresses = useCallback(async () => {
     if (!accessToken) return;
@@ -43,15 +73,25 @@ export default function AddressesPage() {
     e.preventDefault();
     if (!accessToken) return;
     setSaving(true);
-    const res = await postJson('/api/v1/addresses', form, { token: accessToken });
+
+    const payload = {
+      ...form,
+      district: form.district || undefined,
+      nearestPoint: form.nearestPoint || undefined,
+      street: form.street || undefined,
+      landmark: form.landmark || undefined,
+    };
+
+    const res = await postJson('/api/v1/addresses', payload, { token: accessToken });
     setSaving(false);
     if (res.success) {
       toast.success('تمت إضافة العنوان');
       setShowForm(false);
-      setForm({ fullName: '', phone: '', governorate: '', city: '', district: '', street: '', landmark: '', isDefault: false });
+      setForm({ fullName: '', phone: '', governorate: '', city: '', district: '', nearestPoint: '', street: '', landmark: '', isDefault: false });
       fetchAddresses();
     } else {
-      toast.error('حدث خطأ');
+      const errorMsg = !res.success && res.error?.message ? res.error.message : 'حدث خطأ';
+      toast.error(errorMsg);
     }
   };
 
@@ -111,54 +151,102 @@ export default function AddressesPage() {
                 className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm"
               />
             </div>
+
+            {/* Governorate Select */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">المحافظة *</label>
-              <input
-                type="text"
-                required
-                value={form.governorate}
-                onChange={e => setForm(p => ({ ...p, governorate: e.target.value }))}
-                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm"
-              />
+              <div className="relative">
+                <select
+                  required
+                  value={form.governorate}
+                  onChange={e => setForm(p => ({ ...p, governorate: e.target.value, city: '', district: '' }))}
+                  className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm appearance-none cursor-pointer"
+                >
+                  <option value="">اختر المحافظة</option>
+                  {locations.map((gov) => (
+                    <option key={gov.name} value={gov.name}>{gov.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              </div>
             </div>
+
+            {/* District (City/Qadaa) Select */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">المدينة *</label>
-              <input
-                type="text"
-                required
-                value={form.city}
-                onChange={e => setForm(p => ({ ...p, city: e.target.value }))}
-                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm"
-              />
+              <label className="block text-sm font-medium text-foreground mb-1">القضاء *</label>
+              <div className="relative">
+                <select
+                  required
+                  value={form.city}
+                  onChange={e => setForm(p => ({ ...p, city: e.target.value, district: '' }))}
+                  disabled={!form.governorate}
+                  className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">اختر القضاء</option>
+                  {availableDistricts.map((d) => (
+                    <option key={d.name} value={d.name}>{d.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              </div>
             </div>
+
+            {/* Sub-District (Nahiya) Select */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">الحي / المنطقة</label>
-              <input
-                type="text"
-                value={form.district}
-                onChange={e => setForm(p => ({ ...p, district: e.target.value }))}
-                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm"
-              />
+              <label className="block text-sm font-medium text-foreground mb-1">الناحية</label>
+              <div className="relative">
+                <select
+                  value={form.district}
+                  onChange={e => setForm(p => ({ ...p, district: e.target.value }))}
+                  disabled={!form.city}
+                  className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">اختر الناحية (اختياري)</option>
+                  {availableSubDistricts.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              </div>
             </div>
+
+            {/* Street */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">الشارع</label>
+              <label className="block text-sm font-medium text-foreground mb-1">الشارع / الحي</label>
               <input
                 type="text"
                 value={form.street}
                 onChange={e => setForm(p => ({ ...p, street: e.target.value }))}
+                placeholder="مثال: حي النصر، شارع 20"
                 className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm"
               />
             </div>
           </div>
+
+          {/* Nearest Point */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">أقرب نقطة دالة</label>
             <input
               type="text"
-              value={form.landmark}
-              onChange={e => setForm(p => ({ ...p, landmark: e.target.value }))}
+              value={form.nearestPoint}
+              onChange={e => setForm(p => ({ ...p, nearestPoint: e.target.value }))}
+              placeholder="مثال: قرب جامع الرحمن، مقابل مدرسة..."
               className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm"
             />
           </div>
+
+          {/* Landmark */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">ملاحظات إضافية</label>
+            <input
+              type="text"
+              value={form.landmark}
+              onChange={e => setForm(p => ({ ...p, landmark: e.target.value }))}
+              placeholder="معلومات إضافية للسائق..."
+              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary transition text-sm"
+            />
+          </div>
+
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -201,9 +289,10 @@ export default function AddressesPage() {
               <p className="text-sm text-muted-foreground mt-2">
                 {addr.governorate}، {addr.city}
                 {addr.district && `، ${addr.district}`}
-                {addr.street && `، ${addr.street}`}
               </p>
-              {addr.landmark && <p className="text-xs text-muted-foreground mt-1">بالقرب من: {addr.landmark}</p>}
+              {addr.street && <p className="text-xs text-muted-foreground mt-1">{addr.street}</p>}
+              {addr.nearestPoint && <p className="text-xs text-muted-foreground mt-1">أقرب نقطة: {addr.nearestPoint}</p>}
+              {addr.landmark && <p className="text-xs text-muted-foreground mt-1">ملاحظات: {addr.landmark}</p>}
               <div className="flex gap-2 mt-3 pt-3 border-t border-border">
                 <button
                   onClick={() => handleDelete(addr.id)}

@@ -790,6 +790,7 @@ model Address {
   building    String?
   floor       String?
   landmark    String?
+  nearestPoint String?  @map("nearest_point")
   latitude    Decimal? @db.Decimal(10, 8)
   longitude   Decimal? @db.Decimal(11, 8)
   isDefault   Boolean @default(false) @map("is_default")
