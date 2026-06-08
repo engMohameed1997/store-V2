@@ -10,12 +10,16 @@ import {
   Trash2,
   X,
   Check,
+  Upload,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
+import { useAuth } from '@/components/providers/auth-provider';
+import { uploadFile } from '@/lib/client/api';
 import type { AdminBanner, CreateBannerInput, UpdateBannerInput } from '@/lib/client/admin';
 
 export default function BannersPage() {
   const client = useAdminClient();
+  const { accessToken } = useAuth();
   const [banners, setBanners] = useState<AdminBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,6 +29,7 @@ export default function BannersPage() {
     title: '', titleAr: '', image: '', mobileImage: '', link: '', position: '0',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingField, setUploadingField] = useState<'image' | 'mobileImage' | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchBanners = useCallback(async () => {
@@ -63,14 +68,7 @@ export default function BannersPage() {
     const image = formData.image.trim();
 
     if (!title || !image) {
-      alert('العنوان ورابط الصورة مطلوبين');
-      return;
-    }
-
-    try {
-      new URL(image);
-    } catch {
-      alert('رابط الصورة غير صالح');
+      alert('العنوان وصورة البانر مطلوبان');
       return;
     }
 
@@ -109,12 +107,31 @@ export default function BannersPage() {
     }
   };
 
+  const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
+
+  const handleBannerUpload = async (field: 'image' | 'mobileImage', file?: File) => {
+    if (!file || !accessToken) return;
+    setUploadingField(field);
+    try {
+      const result = await uploadFile(file, 'banners', accessToken);
+      if (result.success && result.data) {
+        setFormData((prev) => ({ ...prev, [field]: result.data!.url }));
+      } else if (!result.success) {
+        alert(`فشل رفع الصورة: ${result.error.message}`);
+      }
+    } catch {
+      alert('فشل في رفع الصورة، حاول مرة أخرى');
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
   const handleEdit = (banner: AdminBanner) => {
     setFormData({
       title: banner.title,
       titleAr: banner.titleAr || '',
-      image: banner.image,
-      mobileImage: banner.mobileImage || '',
+      image: uploadPathPattern.test(banner.image) ? banner.image : '',
+      mobileImage: banner.mobileImage && uploadPathPattern.test(banner.mobileImage) ? banner.mobileImage : '',
       link: banner.link || '',
       position: String(banner.position),
     });
@@ -181,28 +198,67 @@ export default function BannersPage() {
                 className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">رابط الصورة *</label>
-              <input
-                type="url"
-                value={formData.image}
-                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                dir="ltr"
-                placeholder="https://..."
-                required
-              />
+            {/* Banner Image Upload */}
+            <div className="sm:col-span-2 lg:col-span-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">صورة البانر *</label>
+              <label className={`flex items-center gap-3 p-2.5 border rounded-xl cursor-pointer transition bg-background ${
+                formData.image ? 'border-border hover:border-primary/50' : 'border-2 border-dashed border-border hover:border-primary/50'
+              }`}>
+                {uploadingField === 'image' ? (
+                  <Loader2 size={18} className="animate-spin text-muted-foreground shrink-0" />
+                ) : formData.image ? (
+                  <img src={formData.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Upload size={16} className="text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  {formData.image
+                    ? <p className="text-xs text-foreground truncate" dir="ltr">{formData.image}</p>
+                    : <p className="text-xs text-muted-foreground">اضغط لرفع صورة البانر</p>
+                  }
+                  <p className="text-[10px] text-muted-foreground mt-0.5">JPEG, PNG, WEBP — حد أقصى 5MB</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={uploadingField !== null}
+                  onChange={(e) => handleBannerUpload('image', e.target.files?.[0])}
+                />
+              </label>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">صورة الموبايل</label>
-              <input
-                type="url"
-                value={formData.mobileImage}
-                onChange={(e) => setFormData({ ...formData, mobileImage: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                dir="ltr"
-                placeholder="https://..."
-              />
+            {/* Mobile Image Upload */}
+            <div className="sm:col-span-2 lg:col-span-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">صورة الموبايل (اختياري)</label>
+              <label className={`flex items-center gap-3 p-2.5 border rounded-xl cursor-pointer transition bg-background ${
+                formData.mobileImage ? 'border-border hover:border-primary/50' : 'border-2 border-dashed border-border hover:border-primary/50'
+              }`}>
+                {uploadingField === 'mobileImage' ? (
+                  <Loader2 size={18} className="animate-spin text-muted-foreground shrink-0" />
+                ) : formData.mobileImage ? (
+                  <img src={formData.mobileImage} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Upload size={16} className="text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  {formData.mobileImage
+                    ? <p className="text-xs text-foreground truncate" dir="ltr">{formData.mobileImage}</p>
+                    : <p className="text-xs text-muted-foreground">صورة مخصصة لشاشات الموبايل</p>
+                  }
+                  <p className="text-[10px] text-muted-foreground mt-0.5">JPEG, PNG, WEBP — حد أقصى 5MB</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={uploadingField !== null}
+                  onChange={(e) => handleBannerUpload('mobileImage', e.target.files?.[0])}
+                />
+              </label>
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">رابط التوجيه</label>

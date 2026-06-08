@@ -42,7 +42,7 @@ export function generateRefreshToken(userId: string, role: string, existingFamil
   return jwt.sign(
     { userId, role, type: "refresh", family } satisfies TokenPayload,
     getRefreshSecret(),
-    { expiresIn: REFRESH_TOKEN_EXPIRY }
+    { expiresIn: REFRESH_TOKEN_EXPIRY, jwtid: crypto.randomUUID() }
   );
 }
 

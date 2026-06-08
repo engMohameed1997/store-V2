@@ -9,8 +9,14 @@ import { z } from "zod";
 const createBannerSchema = z.object({
   title: z.string().min(1).max(200),
   titleAr: z.string().max(200).optional(),
-  image: z.string().url(),
-  mobileImage: z.string().url().optional(),
+  image: z.string().regex(
+    /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
+    "يجب رفع الصورة أولاً عبر نقطة الرفع الموحدة"
+  ),
+  mobileImage: z.string().regex(
+    /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
+    "يجب رفع الصورة أولاً عبر نقطة الرفع الموحدة"
+  ).optional(),
   link: z.string().url().optional(),
   position: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),

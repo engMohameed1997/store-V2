@@ -1,5 +1,6 @@
 import { ProductService } from '@/lib/services/product.service';
 import { CategoryService } from '@/lib/services/category.service';
+import { serialize } from '@/lib/utils/serialize';
 import ProductsPageClient from './products-client';
 
 interface Props {
@@ -30,11 +31,11 @@ export default async function ProductsPage({ searchParams }: Props) {
 
   return (
     <ProductsPageClient
-      products={result.products as any}
+      products={serialize(result.products) as any}
       total={result.total}
       page={result.page}
       limit={result.limit}
-      categories={categories as any}
+      categories={serialize(categories) as any}
       currentFilters={filters}
     />
   );

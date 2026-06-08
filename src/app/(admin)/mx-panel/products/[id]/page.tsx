@@ -12,8 +12,11 @@ import {
   Trash2,
   ImageIcon,
   Save,
+  Upload,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
+import { useAuth } from '@/components/providers/auth-provider';
+import { uploadFile } from '@/lib/client/api';
 import type { AdminCategory, AdminBrand, UpdateProductInput } from '@/lib/client/admin';
 
 interface ImageInput {
@@ -29,12 +32,14 @@ interface SpecInput {
 
 export default function EditProductPage() {
   const client = useAdminClient();
+  const { accessToken } = useAuth();
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [brands, setBrands] = useState<AdminBrand[]>([]);
@@ -91,13 +96,17 @@ export default function EditProductPage() {
           metaDescription: (p.metaDescription as string) || '',
         });
 
-        // Load images
+        // Load images — clear any legacy external URLs that don't match the upload path pattern
         if (Array.isArray(p.images)) {
-          const loadedImages: ImageInput[] = (p.images as Array<Record<string, unknown>>).map((img) => ({
-            url: typeof img === 'string' ? img : (img.url as string) || '',
-            alt: typeof img === 'string' ? '' : (img.alt as string) || '',
-            isPrimary: typeof img === 'string' ? false : img.isPrimary === true,
-          }));
+          const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
+          const loadedImages: ImageInput[] = (p.images as Array<Record<string, unknown>>).map((img) => {
+            const raw = typeof img === 'string' ? img : (img.url as string) || '';
+            return {
+              url: uploadPathPattern.test(raw) ? raw : '',
+              alt: typeof img === 'string' ? '' : (img.alt as string) || '',
+              isPrimary: typeof img === 'string' ? false : img.isPrimary === true,
+            };
+          });
           setImages(loadedImages);
         }
 
@@ -162,17 +171,6 @@ export default function EditProductPage() {
     if (compareAtPrice !== undefined && compareAtPrice <= price) {
       setError('سعر المقارنة يجب أن يكون أكبر من السعر الحالي');
       return;
-    }
-
-    // Validate image URLs
-    for (const img of images) {
-      if (!img.url.trim()) continue;
-      try {
-        new URL(img.url.trim());
-      } catch {
-        setError(`رابط الصورة غير صالح: ${img.url}`);
-        return;
-      }
     }
 
     setSubmitting(true);
@@ -262,6 +260,24 @@ export default function EditProductPage() {
       newImages[index][field] = value as boolean;
     }
     setImages(newImages);
+  };
+
+  const handleUploadFile = async (idx: number, file?: File) => {
+    if (!file || !accessToken) return;
+    setUploading(idx);
+    setError('');
+    try {
+      const result = await uploadFile(file, 'products', accessToken);
+      if (result.success && result.data) {
+        updateImage(idx, 'url', result.data.url);
+      } else if (!result.success) {
+        setError(`فشل رفع الصورة: ${result.error.message}`);
+      }
+    } catch {
+      setError('فشل في رفع الصورة، حاول مرة أخرى');
+    } finally {
+      setUploading(null);
+    }
   };
 
   const addSpec = () => {
@@ -522,26 +538,45 @@ export default function EditProductPage() {
             <div className="space-y-3">
               {images.map((img, idx) => (
                 <div key={idx} className="flex items-start gap-3 p-3 border border-border rounded-xl bg-background">
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <input
-                        type="url"
-                        value={img.url}
-                        onChange={(e) => updateImage(idx, 'url', e.target.value)}
-                        placeholder="رابط الصورة (https://...)"
-                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                        dir="ltr"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        value={img.alt}
-                        onChange={(e) => updateImage(idx, 'alt', e.target.value)}
-                        placeholder="النص البديل"
-                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                      />
-                    </div>
+                  {/* Upload Thumbnail */}
+                  <label className={`relative w-16 h-16 rounded-lg overflow-hidden border bg-muted cursor-pointer group shrink-0 transition ${img.url ? 'border-border' : 'border-2 border-dashed border-border hover:border-primary/50'}`}>
+                    {uploading === idx ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Loader2 size={18} className="animate-spin text-muted-foreground" />
+                      </div>
+                    ) : img.url ? (
+                      <>
+                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                          <Upload size={14} className="text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-0.5">
+                        <Upload size={15} className="text-muted-foreground" />
+                        <span className="text-[9px] text-muted-foreground">رفع</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      disabled={uploading !== null}
+                      onChange={(e) => handleUploadFile(idx, e.target.files?.[0])}
+                    />
+                  </label>
+                  {/* Alt text + path preview */}
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={img.alt}
+                      onChange={(e) => updateImage(idx, 'alt', e.target.value)}
+                      placeholder="النص البديل للصورة"
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                    />
+                    {img.url && (
+                      <p className="text-[10px] text-muted-foreground mt-1.5 truncate" dir="ltr">{img.url}</p>
+                    )}
                   </div>
                   <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer shrink-0 pt-2">
                     <input

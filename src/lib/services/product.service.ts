@@ -52,13 +52,15 @@ function generateSlug(name: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 100);
+    .slice(0, 80);
 
   if (!slug) {
-    slug = `product-${Date.now().toString(36)}`;
+    slug = "product";
   }
 
-  return slug;
+  // Always append a unique suffix: 6-char random hex for collision resistance
+  const uniqueSuffix = crypto.randomBytes(3).toString("hex");
+  return `${slug}-${uniqueSuffix}`;
 }
 
 function buildSkuCandidate(): string {
@@ -178,9 +180,13 @@ export class ProductService {
   }
 
   static async create(input: CreateProductInput) {
-    const slug = generateSlug(input.name);
-    const existing = await db.product.findUnique({ where: { slug } });
-    const finalSlug = existing ? `${slug}-${Date.now().toString(36)}` : slug;
+    // Generate unique slug with retry for extremely rare collisions
+    let finalSlug = generateSlug(input.name);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const existing = await db.product.findUnique({ where: { slug: finalSlug }, select: { id: true } });
+      if (!existing) break;
+      finalSlug = generateSlug(input.name);
+    }
 
     const sku = await generateUniqueSku();
 
@@ -219,11 +225,16 @@ export class ProductService {
 
     let slugData = {};
     if (input.name && input.name !== existing.name) {
-      const newSlug = generateSlug(input.name);
-      const slugExists = await db.product.findFirst({
-        where: { slug: newSlug, id: { not: id } },
-      });
-      slugData = { slug: slugExists ? `${newSlug}-${Date.now().toString(36)}` : newSlug };
+      let newSlug = generateSlug(input.name);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const slugExists = await db.product.findFirst({
+          where: { slug: newSlug, id: { not: id } },
+          select: { id: true },
+        });
+        if (!slugExists) break;
+        newSlug = generateSlug(input.name);
+      }
+      slugData = { slug: newSlug };
     }
 
     if (images) {

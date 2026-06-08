@@ -42,20 +42,39 @@ export interface AdminProduct {
   updatedAt: string;
 }
 
+export interface ProductImageInput {
+  url: string;
+  alt?: string;
+  position: number;
+  isPrimary: boolean;
+}
+
+export interface ProductSpecInput {
+  key: string;
+  value: string;
+  position: number;
+}
+
 export interface CreateProductInput {
   name: string;
   nameAr?: string;
-  slug?: string;
   description?: string;
   descriptionAr?: string;
   price: number;
   compareAtPrice?: number;
+  costPrice?: number;
   stock: number;
-  sku?: string;
+  lowStockThreshold?: number;
+  weight?: number;
   isActive?: boolean;
+  isFeatured?: boolean;
+  isDigital?: boolean;
   categoryId?: string;
   brandId?: string;
-  images?: string[];
+  metaTitle?: string;
+  metaDescription?: string;
+  images?: ProductImageInput[];
+  specs?: ProductSpecInput[];
 }
 
 export type UpdateProductInput = Partial<CreateProductInput>;

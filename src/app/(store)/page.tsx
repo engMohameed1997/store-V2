@@ -6,6 +6,7 @@ import PromotionalBanner from '@/components/store/promotional-banner';
 import { ProductService } from '@/lib/services/product.service';
 import { CategoryService } from '@/lib/services/category.service';
 import { BannerService } from '@/lib/services/banner.service';
+import { serialize } from '@/lib/utils/serialize';
 
 export default async function HomePage() {
   const [featuredResult, newResult, bestSellingResult, categories, banners] = await Promise.all([
@@ -19,10 +20,10 @@ export default async function HomePage() {
   return (
     <div className="pb-12">
       {/* Hero Slider */}
-      <HeroSlider banners={banners as any} />
+      <HeroSlider banners={serialize(banners) as any} />
 
       {/* Category Icons */}
-      <CategoryGrid categories={categories as any} />
+      <CategoryGrid categories={serialize(categories) as any} />
 
       {/* Features Strip */}
       <FeaturesStrip />
@@ -30,7 +31,7 @@ export default async function HomePage() {
       {/* Featured Products */}
       <ProductSection
         title="المنتجات المميزة"
-        products={featuredResult.products as any}
+        products={serialize(featuredResult.products) as any}
         viewAllLink="/products?featured=true"
       />
 
@@ -40,7 +41,7 @@ export default async function HomePage() {
       {/* Best Selling */}
       <ProductSection
         title="الأكثر مبيعاً"
-        products={bestSellingResult.products as any}
+        products={serialize(bestSellingResult.products) as any}
         viewAllLink="/products?sortBy=soldCount&sortOrder=desc"
       />
 
@@ -48,7 +49,7 @@ export default async function HomePage() {
       {newResult.products.length > 0 && (
         <ProductSection
           title="وصل حديثاً"
-          products={newResult.products as any}
+          products={serialize(newResult.products) as any}
           viewAllLink="/products?sortBy=createdAt&sortOrder=desc"
         />
       )}

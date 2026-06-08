@@ -10,12 +10,16 @@ import {
   Trash2,
   X,
   Check,
+  Upload,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
+import { useAuth } from '@/components/providers/auth-provider';
+import { uploadFile } from '@/lib/client/api';
 import type { AdminBrand, CreateBrandInput, UpdateBrandInput } from '@/lib/client/admin';
 
 export default function BrandsPage() {
   const client = useAdminClient();
+  const { accessToken } = useAuth();
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,7 +27,27 @@ export default function BrandsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', nameAr: '', logo: '', description: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+
+  const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
+
+  const handleLogoUpload = async (file?: File) => {
+    if (!file || !accessToken) return;
+    setUploadingLogo(true);
+    try {
+      const result = await uploadFile(file, 'brands', accessToken);
+      if (result.success && result.data) {
+        setFormData((prev) => ({ ...prev, logo: result.data!.url }));
+      } else if (!result.success) {
+        alert(`فشل رفع الشعار: ${result.error.message}`);
+      }
+    } catch {
+      alert('فشل في رفع الشعار، حاول مرة أخرى');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const fetchBrands = useCallback(async () => {
     if (!client) return;
@@ -100,7 +124,7 @@ export default function BrandsPage() {
     setFormData({
       name: brand.name,
       nameAr: brand.nameAr || '',
-      logo: brand.logo || '',
+      logo: brand.logo && uploadPathPattern.test(brand.logo) ? brand.logo : '',
       description: brand.description || '',
     });
     setEditingId(brand.id);
@@ -166,16 +190,36 @@ export default function BrandsPage() {
                 className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
               />
             </div>
+            {/* Logo Upload */}
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">رابط الشعار (URL)</label>
-              <input
-                type="url"
-                value={formData.logo}
-                onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                dir="ltr"
-                placeholder="https://..."
-              />
+              <label className="block text-xs font-medium text-muted-foreground mb-1">شعار البراند (اختياري)</label>
+              <label className={`flex items-center gap-3 p-2.5 border rounded-xl cursor-pointer transition bg-background ${
+                formData.logo ? 'border-border hover:border-primary/50' : 'border-2 border-dashed border-border hover:border-primary/50'
+              }`}>
+                {uploadingLogo ? (
+                  <Loader2 size={18} className="animate-spin text-muted-foreground shrink-0" />
+                ) : formData.logo ? (
+                  <img src={formData.logo} alt="" className="w-10 h-10 rounded-lg object-contain bg-muted shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Upload size={16} className="text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  {formData.logo
+                    ? <p className="text-xs text-foreground truncate" dir="ltr">{formData.logo}</p>
+                    : <p className="text-xs text-muted-foreground">اضغط لرفع شعار البراند</p>
+                  }
+                  <p className="text-[10px] text-muted-foreground mt-0.5">JPEG, PNG, WEBP — حد أقصى 5MB</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={uploadingLogo}
+                  onChange={(e) => handleLogoUpload(e.target.files?.[0])}
+                />
+              </label>
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">الوصف</label>

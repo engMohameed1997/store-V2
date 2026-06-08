@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { CategoryService } from '@/lib/services/category.service';
 import { ProductService } from '@/lib/services/product.service';
+import { serialize } from '@/lib/utils/serialize';
 import ProductCard from '@/components/store/product-card';
 
 interface Props {
@@ -77,7 +78,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {(result.products as any[]).map(product => (
+            {(serialize(result.products) as any[]).map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

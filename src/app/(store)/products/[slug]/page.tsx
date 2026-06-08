@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { ProductService } from '@/lib/services/product.service';
+import { serialize } from '@/lib/utils/serialize';
 import ProductDetailClient from './product-detail-client';
 
 interface Props {
@@ -11,7 +12,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   try {
     const product = await ProductService.getBySlug(slug);
-    return <ProductDetailClient product={product as any} />;
+    return <ProductDetailClient product={serialize(product) as any} />;
   } catch {
     notFound();
   }

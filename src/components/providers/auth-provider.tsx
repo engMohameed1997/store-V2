@@ -55,19 +55,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
+
   const refreshToken = useCallback(async (): Promise<boolean> => {
-    const result = await authClient.refresh();
-    if (result.success && result.data?.accessToken && result.data?.user) {
-      setState({
-        user: result.data.user,
-        accessToken: result.data.accessToken,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-      return true;
+    // Deduplicate concurrent refresh calls — reuse in-flight promise
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
     }
-    clearAuth();
-    return false;
+
+    const promise = (async () => {
+      const result = await authClient.refresh();
+      if (result.success && result.data?.accessToken && result.data?.user) {
+        setState({
+          user: result.data.user,
+          accessToken: result.data.accessToken,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+        return true;
+      }
+      clearAuth();
+      return false;
+    })();
+
+    refreshPromiseRef.current = promise;
+    try {
+      return await promise;
+    } finally {
+      refreshPromiseRef.current = null;
+    }
   }, [clearAuth]);
 
   const login = useCallback(

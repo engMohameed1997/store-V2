@@ -170,6 +170,59 @@ export async function deleteJson<T = unknown>(
   }
 }
 
+export interface UploadResult {
+  url: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+  width: number;
+  height: number;
+}
+
+export async function uploadFile(
+  file: File,
+  folder: string,
+  token: string
+): Promise<ApiResult<UploadResult>> {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", folder);
+
+    const res = await fetch("/api/v1/uploads", {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
+      body: formData,
+    });
+
+    const json = await safeJson(res);
+
+    if (isApiResponse<UploadResult>(json)) {
+      return { ...json, status: res.status };
+    }
+
+    if (res.ok) {
+      return { success: true, data: json as UploadResult, status: res.status } as ApiResult<UploadResult>;
+    }
+
+    return {
+      success: false,
+      error: {
+        code: "UPLOAD_FAILED",
+        message: (json as { error?: { message?: string } })?.error?.message || "File upload failed",
+      },
+      status: res.status,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: { code: "NETWORK_ERROR", message: error instanceof Error ? error.message : "Network error" },
+      status: 0,
+    };
+  }
+}
+
 async function safeJson(res: Response) {
   try {
     return await res.json();
