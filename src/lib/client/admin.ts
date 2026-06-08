@@ -45,7 +45,7 @@ export interface AdminProduct {
 export interface CreateProductInput {
   name: string;
   nameAr?: string;
-  slug: string;
+  slug?: string;
   description?: string;
   descriptionAr?: string;
   price: number;

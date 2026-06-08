@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, Heart, Star, Minus, Plus, ChevronLeft, Share2, Shield, Truck, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Heart, Star, Minus, Plus, ChevronLeft, ChevronRight, Share2, Shield, Truck, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { postJson } from '@/lib/client/api';
 import { toast } from 'sonner';
@@ -63,6 +63,17 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
     product.variants.length > 0 ? product.variants[0].id : null
   );
   const [addingToCart, setAddingToCart] = useState(false);
+
+  // Keyboard navigation for the image slider
+  useEffect(() => {
+    if (product.images.length <= 1) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') setSelectedImage(i => Math.min(product.images.length - 1, i + 1));
+      if (e.key === 'ArrowRight') setSelectedImage(i => Math.max(0, i - 1));
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [product.images.length]);
 
   const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
   const compareAtPrice = product.compareAtPrice
@@ -143,6 +154,37 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
             ) : (
               <div className="w-full h-full flex items-center justify-center text-8xl opacity-20">📦</div>
             )}
+
+            {/* Slider Navigation — shown only when multiple images exist */}
+            {product.images.length > 1 && (
+              <>
+                {/* Previous image (right side — RTL direction) */}
+                <button
+                  onClick={() => setSelectedImage(i => Math.max(0, i - 1))}
+                  disabled={selectedImage === 0}
+                  aria-label="الصورة السابقة"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-background/80 border border-border shadow flex items-center justify-center hover:bg-background transition disabled:opacity-30 z-10"
+                >
+                  <ChevronRight size={18} />
+                </button>
+
+                {/* Next image (left side — RTL direction) */}
+                <button
+                  onClick={() => setSelectedImage(i => Math.min(product.images.length - 1, i + 1))}
+                  disabled={selectedImage === product.images.length - 1}
+                  aria-label="الصورة التالية"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-background/80 border border-border shadow flex items-center justify-center hover:bg-background transition disabled:opacity-30 z-10"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                {/* Image counter */}
+                <span className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-background/80 text-foreground text-xs font-medium px-2.5 py-1 rounded-full border border-border select-none">
+                  {selectedImage + 1} / {product.images.length}
+                </span>
+              </>
+            )}
+
             {discount > 0 && (
               <span className="absolute top-4 right-4 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-lg">
                 -{discount}%

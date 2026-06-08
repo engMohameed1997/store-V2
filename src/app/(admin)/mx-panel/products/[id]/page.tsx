@@ -1,0 +1,666 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
+import {
+  Package,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  Plus,
+  Trash2,
+  ImageIcon,
+  Save,
+} from 'lucide-react';
+import { useAdminClient } from '@/hooks/use-admin-client';
+import type { AdminCategory, AdminBrand, UpdateProductInput } from '@/lib/client/admin';
+
+interface ImageInput {
+  url: string;
+  alt: string;
+  isPrimary: boolean;
+}
+
+interface SpecInput {
+  key: string;
+  value: string;
+}
+
+export default function EditProductPage() {
+  const client = useAdminClient();
+  const router = useRouter();
+  const params = useParams();
+  const productId = params.id as string;
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [brands, setBrands] = useState<AdminBrand[]>([]);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    nameAr: '',
+    description: '',
+    descriptionAr: '',
+    price: '',
+    compareAtPrice: '',
+    costPrice: '',
+    stock: '0',
+    lowStockThreshold: '5',
+    weight: '',
+    isActive: true,
+    isFeatured: false,
+    isDigital: false,
+    categoryId: '',
+    brandId: '',
+    metaTitle: '',
+    metaDescription: '',
+  });
+
+  const [images, setImages] = useState<ImageInput[]>([]);
+  const [specs, setSpecs] = useState<SpecInput[]>([]);
+
+  const fetchProduct = useCallback(async () => {
+    if (!client || !productId) return;
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await client.products.get(productId);
+      if (result.success && result.data) {
+        const p = result.data as unknown as Record<string, unknown>;
+        setFormData({
+          name: (p.name as string) || '',
+          nameAr: (p.nameAr as string) || '',
+          description: (p.description as string) || '',
+          descriptionAr: (p.descriptionAr as string) || '',
+          price: String(p.price || ''),
+          compareAtPrice: p.compareAtPrice ? String(p.compareAtPrice) : '',
+          costPrice: p.costPrice ? String(p.costPrice) : '',
+          stock: String(p.stock ?? 0),
+          lowStockThreshold: String(p.lowStockThreshold ?? 5),
+          weight: p.weight ? String(p.weight) : '',
+          isActive: p.isActive !== false,
+          isFeatured: p.isFeatured === true,
+          isDigital: p.isDigital === true,
+          categoryId: (p.categoryId as string) || '',
+          brandId: (p.brandId as string) || '',
+          metaTitle: (p.metaTitle as string) || '',
+          metaDescription: (p.metaDescription as string) || '',
+        });
+
+        // Load images
+        if (Array.isArray(p.images)) {
+          const loadedImages: ImageInput[] = (p.images as Array<Record<string, unknown>>).map((img) => ({
+            url: typeof img === 'string' ? img : (img.url as string) || '',
+            alt: typeof img === 'string' ? '' : (img.alt as string) || '',
+            isPrimary: typeof img === 'string' ? false : img.isPrimary === true,
+          }));
+          setImages(loadedImages);
+        }
+
+        // Load specs
+        if (Array.isArray(p.specs)) {
+          const loadedSpecs: SpecInput[] = (p.specs as Array<Record<string, unknown>>).map((s) => ({
+            key: (s.key as string) || '',
+            value: (s.value as string) || '',
+          }));
+          setSpecs(loadedSpecs);
+        }
+      } else if (!result.success) {
+        setError(result.error.message);
+      }
+    } catch {
+      setError('فشل في تحميل بيانات المنتج');
+    } finally {
+      setLoading(false);
+    }
+  }, [client, productId]);
+
+  const fetchLookups = useCallback(async () => {
+    if (!client) return;
+    try {
+      const [catResult, brandResult] = await Promise.allSettled([
+        client.categories.list(),
+        client.brands.list(),
+      ]);
+      if (catResult.status === 'fulfilled' && catResult.value.success && catResult.value.data) {
+        setCategories(catResult.value.data as AdminCategory[]);
+      }
+      if (brandResult.status === 'fulfilled' && brandResult.value.success && brandResult.value.data) {
+        setBrands(brandResult.value.data as AdminBrand[]);
+      }
+    } catch {
+      // Silent
+    }
+  }, [client]);
+
+  useEffect(() => {
+    fetchProduct();
+    fetchLookups();
+  }, [fetchProduct, fetchLookups]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client || submitting) return;
+
+    const name = formData.name.trim();
+    if (!name) {
+      setError('اسم المنتج مطلوب');
+      return;
+    }
+
+    const price = Number(formData.price);
+    if (!price || price <= 0) {
+      setError('السعر يجب أن يكون أكبر من صفر');
+      return;
+    }
+
+    const compareAtPrice = formData.compareAtPrice ? Number(formData.compareAtPrice) : undefined;
+    if (compareAtPrice !== undefined && compareAtPrice <= price) {
+      setError('سعر المقارنة يجب أن يكون أكبر من السعر الحالي');
+      return;
+    }
+
+    // Validate image URLs
+    for (const img of images) {
+      if (!img.url.trim()) continue;
+      try {
+        new URL(img.url.trim());
+      } catch {
+        setError(`رابط الصورة غير صالح: ${img.url}`);
+        return;
+      }
+    }
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const payload: Record<string, unknown> = {
+        name,
+        nameAr: formData.nameAr.trim() || undefined,
+        description: formData.description.trim() || undefined,
+        descriptionAr: formData.descriptionAr.trim() || undefined,
+        price,
+        compareAtPrice,
+        stock: Number(formData.stock) || 0,
+        isActive: formData.isActive,
+        isFeatured: formData.isFeatured,
+        isDigital: formData.isDigital,
+        categoryId: formData.categoryId || undefined,
+        brandId: formData.brandId || undefined,
+      };
+
+      // Images
+      const filteredImages = images.filter((img) => img.url.trim());
+      if (filteredImages.length > 0) {
+        payload.images = filteredImages.map((img, idx) => ({
+          url: img.url.trim(),
+          alt: img.alt.trim() || undefined,
+          position: idx,
+          isPrimary: img.isPrimary,
+        }));
+      } else {
+        payload.images = [];
+      }
+
+      // Optional numeric fields
+      if (formData.costPrice) payload.costPrice = Number(formData.costPrice);
+      if (formData.lowStockThreshold) payload.lowStockThreshold = Number(formData.lowStockThreshold);
+      if (formData.weight) payload.weight = Number(formData.weight);
+      if (formData.metaTitle.trim()) payload.metaTitle = formData.metaTitle.trim();
+      if (formData.metaDescription.trim()) payload.metaDescription = formData.metaDescription.trim();
+
+      // Specs
+      const filteredSpecs = specs.filter((s) => s.key.trim() && s.value.trim());
+      if (filteredSpecs.length > 0) {
+        payload.specs = filteredSpecs.map((s, idx) => ({
+          key: s.key.trim(),
+          value: s.value.trim(),
+          position: idx,
+        }));
+      } else {
+        payload.specs = [];
+      }
+
+      const result = await client.products.update(productId, payload as unknown as UpdateProductInput);
+      if (result.success) {
+        router.push('/mx-panel/products');
+      } else if (!result.success) {
+        setError(result.error.message);
+      }
+    } catch {
+      setError('فشل في تحديث المنتج');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const addImage = () => {
+    setImages([...images, { url: '', alt: '', isPrimary: images.length === 0 }]);
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = images.filter((_, i) => i !== index);
+    if (newImages.length > 0 && !newImages.some((img) => img.isPrimary)) {
+      newImages[0].isPrimary = true;
+    }
+    setImages(newImages);
+  };
+
+  const updateImage = (index: number, field: keyof ImageInput, value: string | boolean) => {
+    const newImages = [...images];
+    if (field === 'isPrimary' && value === true) {
+      newImages.forEach((img) => (img.isPrimary = false));
+    }
+    if (field === 'url' || field === 'alt') {
+      newImages[index][field] = value as string;
+    } else {
+      newImages[index][field] = value as boolean;
+    }
+    setImages(newImages);
+  };
+
+  const addSpec = () => {
+    setSpecs([...specs, { key: '', value: '' }]);
+  };
+
+  const removeSpec = (index: number) => {
+    setSpecs(specs.filter((_, i) => i !== index));
+  };
+
+  const updateSpec = (index: number, field: keyof SpecInput, value: string) => {
+    const newSpecs = [...specs];
+    newSpecs[index][field] = value;
+    setSpecs(newSpecs);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <Link
+          href="/mx-panel/products"
+          className="p-2 rounded-xl border border-border text-muted-foreground hover:bg-muted transition"
+        >
+          <ArrowRight size={18} />
+        </Link>
+        <Package size={24} className="text-primary" />
+        <h1 className="text-2xl font-bold text-foreground">تعديل المنتج</h1>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+          <AlertCircle size={16} />
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Info */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <h2 className="font-bold text-foreground mb-4">المعلومات الأساسية</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">اسم المنتج (إنجليزي) *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                required
+                maxLength={255}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">اسم المنتج (عربي)</label>
+              <input
+                type="text"
+                value={formData.nameAr}
+                onChange={(e) => setFormData({ ...formData, nameAr: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                maxLength={255}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">الوصف (إنجليزي)</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm resize-none"
+                rows={3}
+                maxLength={5000}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">الوصف (عربي)</label>
+              <textarea
+                value={formData.descriptionAr}
+                onChange={(e) => setFormData({ ...formData, descriptionAr: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm resize-none"
+                rows={3}
+                maxLength={5000}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing & Stock */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <h2 className="font-bold text-foreground mb-4">التسعير والمخزون</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">السعر *</label>
+              <input
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                min="0.01"
+                step="0.01"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">سعر المقارنة</label>
+              <input
+                type="number"
+                value={formData.compareAtPrice}
+                onChange={(e) => setFormData({ ...formData, compareAtPrice: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">سعر التكلفة</label>
+              <input
+                type="number"
+                value={formData.costPrice}
+                onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">المخزون</label>
+              <input
+                type="number"
+                value={formData.stock}
+                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">حد التنبيه (المخزون المنخفض)</label>
+              <input
+                type="number"
+                value={formData.lowStockThreshold}
+                onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">الوزن (كجم)</label>
+              <input
+                type="number"
+                value={formData.weight}
+                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Classification */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <h2 className="font-bold text-foreground mb-4">التصنيف</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">الصنف</label>
+              <select
+                value={formData.categoryId}
+                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+              >
+                <option value="">بدون صنف</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nameAr || cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">البراند</label>
+              <select
+                value={formData.brandId}
+                onChange={(e) => setFormData({ ...formData, brandId: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+              >
+                <option value="">بدون براند</option>
+                {brands.map((brand) => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.nameAr || brand.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Options */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <h2 className="font-bold text-foreground mb-4">الخيارات</h2>
+          <div className="flex flex-wrap gap-6">
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-foreground">نشط (ظاهر في المتجر)</span>
+            </label>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isFeatured}
+                onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-foreground">منتج مميز</span>
+            </label>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isDigital}
+                onChange={(e) => setFormData({ ...formData, isDigital: e.target.checked })}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-foreground">منتج رقمي</span>
+            </label>
+          </div>
+        </section>
+
+        {/* Images */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-foreground">الصور</h2>
+            <button
+              type="button"
+              onClick={addImage}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/10 transition"
+            >
+              <Plus size={14} />
+              إضافة صورة
+            </button>
+          </div>
+          {images.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <ImageIcon size={32} className="mx-auto mb-2 opacity-30" />
+              <p className="text-sm">لم يتم إضافة صور بعد</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {images.map((img, idx) => (
+                <div key={idx} className="flex items-start gap-3 p-3 border border-border rounded-xl bg-background">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <input
+                        type="url"
+                        value={img.url}
+                        onChange={(e) => updateImage(idx, 'url', e.target.value)}
+                        placeholder="رابط الصورة (https://...)"
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={img.alt}
+                        onChange={(e) => updateImage(idx, 'alt', e.target.value)}
+                        placeholder="النص البديل"
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                      />
+                    </div>
+                  </div>
+                  <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer shrink-0 pt-2">
+                    <input
+                      type="radio"
+                      name="primaryImage"
+                      checked={img.isPrimary}
+                      onChange={() => updateImage(idx, 'isPrimary', true)}
+                      className="w-3 h-3"
+                    />
+                    رئيسية
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="p-1.5 text-muted-foreground hover:text-red-500 transition shrink-0"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Specs */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-foreground">المواصفات</h2>
+            <button
+              type="button"
+              onClick={addSpec}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/10 transition"
+            >
+              <Plus size={14} />
+              إضافة مواصفة
+            </button>
+          </div>
+          {specs.length === 0 ? (
+            <p className="text-center py-4 text-sm text-muted-foreground">لم يتم إضافة مواصفات</p>
+          ) : (
+            <div className="space-y-2">
+              {specs.map((spec, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={spec.key}
+                    onChange={(e) => updateSpec(idx, 'key', e.target.value)}
+                    placeholder="الخاصية (مثل: اللون)"
+                    className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                    maxLength={100}
+                  />
+                  <input
+                    type="text"
+                    value={spec.value}
+                    onChange={(e) => updateSpec(idx, 'value', e.target.value)}
+                    placeholder="القيمة (مثل: أحمر)"
+                    className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                    maxLength={500}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSpec(idx)}
+                    className="p-1.5 text-muted-foreground hover:text-red-500 transition"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* SEO */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <h2 className="font-bold text-foreground mb-4">تحسين محركات البحث (SEO)</h2>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">عنوان الميتا</label>
+              <input
+                type="text"
+                value={formData.metaTitle}
+                onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                maxLength={70}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">{formData.metaTitle.length}/70</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">وصف الميتا</label>
+              <textarea
+                value={formData.metaDescription}
+                onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm resize-none"
+                rows={2}
+                maxLength={160}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">{formData.metaDescription.length}/160</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Submit */}
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:bg-primary-dark transition disabled:opacity-50"
+          >
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            حفظ التعديلات
+          </button>
+          <Link
+            href="/mx-panel/products"
+            className="px-6 py-3 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition"
+          >
+            إلغاء
+          </Link>
+        </div>
+      </form>
+    </div>
+  );
+}

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
 import type { CreateProductInput, UpdateProductInput } from "@/lib/validators/product";
@@ -60,11 +61,19 @@ function generateSlug(name: string): string {
   return slug;
 }
 
-function generateSku(): string {
-  const prefix = "SKU";
+function buildSkuCandidate(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `${prefix}-${timestamp}-${random}`;
+  const random = crypto.randomBytes(3).toString("hex").toUpperCase();
+  return `SKU-${timestamp}-${random}`;
+}
+
+async function generateUniqueSku(): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = buildSkuCandidate();
+    const exists = await db.product.findUnique({ where: { sku: candidate }, select: { id: true } });
+    if (!exists) return candidate;
+  }
+  throw Errors.internal("Failed to generate a unique SKU — please retry");
 }
 
 export class ProductService {
@@ -173,7 +182,7 @@ export class ProductService {
     const existing = await db.product.findUnique({ where: { slug } });
     const finalSlug = existing ? `${slug}-${Date.now().toString(36)}` : slug;
 
-    const sku = generateSku();
+    const sku = await generateUniqueSku();
 
     const { images, specs, variants, ...productData } = input;
 

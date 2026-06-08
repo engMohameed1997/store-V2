@@ -21,7 +21,12 @@ export const createProductSchema = z.object({
   images: z
     .array(
       z.object({
-        url: z.string().url(),
+        url: z
+          .string()
+          .regex(
+            /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
+            "Image must be uploaded via the /api/v1/uploads endpoint first"
+          ),
         alt: z.string().max(255).optional(),
         position: z.number().int().min(0).default(0),
         isPrimary: z.boolean().default(false),

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import {
   ShoppingCart,
   Search,
@@ -208,13 +209,13 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center">
-                          <button
-                            onClick={() => alert(`تفاصيل الطلب: ${order.id}`)}
+                          <Link
+                            href={`/mx-panel/orders/${order.id}`}
                             className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition"
                             title="عرض التفاصيل"
                           >
                             <Eye size={16} />
-                          </button>
+                          </Link>
                         </div>
                       </td>
                     </tr>

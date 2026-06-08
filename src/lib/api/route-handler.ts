@@ -3,7 +3,7 @@ import { handleApiError } from "./error-handler";
 import { checkRateLimit } from "./rate-limiter";
 import { AuthUser, requireAuth, requireAdmin, requireSuperAdmin } from "./auth-guard";
 
-type RateLimitTier = "default" | "auth" | "strict" | "search";
+type RateLimitTier = "default" | "auth" | "strict" | "search" | "upload";
 
 interface RouteOptions {
   rateLimit?: RateLimitTier;

@@ -13,6 +13,7 @@ const RATE_LIMITS: Record<string, RateLimitConfig> = {
   auth: { windowMs: 900_000, maxRequests: 10 },
   strict: { windowMs: 60_000, maxRequests: 5 },
   search: { windowMs: 60_000, maxRequests: 30 },
+  upload: { windowMs: 60_000, maxRequests: 10 },
 };
 
 // Database-backed rate limiter for serverless compatibility

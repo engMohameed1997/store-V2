@@ -2,35 +2,46 @@ import { NextRequest } from "next/server";
 import { protectedRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { Errors } from "@/lib/api/errors";
-import path from "path";
-import fs from "fs/promises";
-import crypto from "crypto";
+import { UploadService, MAX_FILE_SIZE, MAX_FILES_PER_REQUEST } from "@/lib/services/upload.service";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
-
-export const POST = protectedRoute(async (request: NextRequest) => {
+export const POST = protectedRoute(async (request: NextRequest, context) => {
   const formData = await request.formData();
-  const file = formData.get("file") as File | null;
+
+  // Collect files — supports both "files" (multi-upload) and "file" (single upload)
+  const multiEntries = formData.getAll("files");
+  const singleEntry = formData.get("file");
   const folder = (formData.get("folder") as string) || "general";
 
-  if (!file) throw Errors.badRequest("No file uploaded");
-  if (file.size > MAX_SIZE) throw Errors.badRequest("File too large (max 5MB)");
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    throw Errors.badRequest(`Invalid file type. Allowed: ${ALLOWED_TYPES.join(", ")}`);
+  const files: File[] = [];
+  if (multiEntries.length > 0) {
+    for (const entry of multiEntries) {
+      if (entry instanceof File) files.push(entry);
+    }
+  } else if (singleEntry instanceof File) {
+    files.push(singleEntry);
   }
 
-  const ext = path.extname(file.name) || `.${file.type.split("/")[1]}`;
-  const filename = `${crypto.randomUUID()}${ext}`;
-  const folderPath = path.join(UPLOAD_DIR, folder);
+  if (files.length === 0) throw Errors.badRequest("No files provided");
+  if (files.length > MAX_FILES_PER_REQUEST) {
+    throw Errors.badRequest(`Too many files — maximum ${MAX_FILES_PER_REQUEST} per request`);
+  }
 
-  await fs.mkdir(folderPath, { recursive: true });
+  // Pre-validate all file sizes before any processing begins
+  for (const file of files) {
+    if (file.size === 0) throw Errors.badRequest("Empty files are not allowed");
+    if (file.size > MAX_FILE_SIZE) {
+      throw Errors.badRequest(`File exceeds the 5MB size limit`);
+    }
+  }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(folderPath, filename), buffer);
+  // Process each file: magic bytes check → re-encode → strip metadata → save
+  const results = [];
+  for (const file of files) {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const result = await UploadService.processAndSave(buffer, folder, context.user?.userId);
+    results.push(result);
+  }
 
-  const url = `/uploads/${folder}/${filename}`;
-
-  return apiSuccess({ url, filename, size: file.size, mimeType: file.type });
-}, "default");
+  if (results.length === 1) return apiSuccess(results[0]);
+  return apiSuccess({ uploads: results, count: results.length });
+}, "upload");

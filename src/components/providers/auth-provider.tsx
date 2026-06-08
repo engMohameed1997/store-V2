@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -92,8 +93,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.accessToken, clearAuth]);
 
   // Try to refresh token on mount (session recovery)
+  // useRef prevents double-execution in React strict mode
+  const didInitRef = useRef(false);
   useEffect(() => {
-    refreshToken().catch(() => clearAuth());
+    if (didInitRef.current) return;
+    didInitRef.current = true;
+
+    const timeoutId = setTimeout(() => {
+      // Safety net: if refresh takes more than 10s, clear loading state
+      setState((prev) => (prev.isLoading ? { ...prev, isLoading: false } : prev));
+    }, 10000);
+
+    refreshToken()
+      .catch(() => clearAuth())
+      .finally(() => clearTimeout(timeoutId));
   }, [refreshToken, clearAuth]);
 
   const value = useMemo<AuthContextValue>(
