@@ -76,7 +76,7 @@ export default function Header() {
         <div className="container mx-auto px-4 flex items-center justify-between h-16 gap-4">
           {/* Logo */}
           <Link href="/" className="flex-shrink-0 text-2xl font-black tracking-tight hover:opacity-90 transition">
-            <span className="text-[var(--accent)]">الـ</span>متجر
+            <span className="text-[var(--accent)]">الـ</span>خزاعي
           </Link>
 
           {/* Search Bar - Desktop */}

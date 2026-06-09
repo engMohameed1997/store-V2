@@ -10,6 +10,10 @@ const ALLOWED_MODELS = new Set([
   "review", "banner", "page", "shippingZone", "storeSetting",
 ]);
 
+const SOFT_DELETABLE_MODELS = new Set([
+  "product", "category", "brand", "coupon", "user", "review",
+]);
+
 type ModelName = string;
 
 interface CrudListOptions {
@@ -74,6 +78,11 @@ export async function crudList(
     }));
   }
 
+  // If the model supports soft deletes, filter out deleted items by default unless explicitly queried
+  if (SOFT_DELETABLE_MODELS.has(options.model) && !("deletedAt" in where)) {
+    where.deletedAt = null;
+  }
+
   const [data, total] = await Promise.all([
     model.findMany({
       where,
@@ -94,9 +103,10 @@ export async function crudGet(
   options: CrudGetOptions
 ): Promise<NextResponse> {
   const model = getModel(options.model);
+  const isSoftDeletable = SOFT_DELETABLE_MODELS.has(options.model);
 
   const data = await model.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, ...(isSoftDeletable && { deletedAt: null }) },
     ...(options.include && { include: options.include }),
     ...(options.select && { select: options.select }),
   });
@@ -128,8 +138,11 @@ export async function crudUpdate(
 ): Promise<NextResponse> {
   const sanitized = sanitizeObject(rawData);
   const model = getModel(options.model);
+  const isSoftDeletable = SOFT_DELETABLE_MODELS.has(options.model);
 
-  const existing = await model.findFirst({ where: { id, deletedAt: null } });
+  const existing = await model.findFirst({
+    where: { id, ...(isSoftDeletable && { deletedAt: null }) },
+  });
   if (!existing) throw Errors.notFound(options.model);
 
   const data = await model.update({
@@ -146,12 +159,15 @@ export async function crudDelete(
   options: CrudDeleteOptions
 ): Promise<NextResponse> {
   const model = getModel(options.model);
+  const isSoftDeletable = SOFT_DELETABLE_MODELS.has(options.model);
 
-  const existing = await model.findFirst({ where: { id, deletedAt: null } });
+  const existing = await model.findFirst({
+    where: { id, ...(isSoftDeletable && { deletedAt: null }) },
+  });
   if (!existing) throw Errors.notFound(options.model);
 
-  // Default to soft delete for safety, hard delete only if explicitly requested
-  if (options.soft === false) {
+  // Default to soft delete for safety, hard delete only if explicitly requested or if model doesn't support soft delete
+  if (options.soft === false || !isSoftDeletable) {
     await model.delete({ where: { id } });
   } else {
     await model.update({

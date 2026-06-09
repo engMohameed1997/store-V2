@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "المتجر - تسوق اونلاين",
+  title: "الخزاعي - تسوق اونلاين",
   description: "متجرك الإلكتروني - تسوق أفضل المنتجات مع توصيل سريع وأسعار منافسة",
 };
 

@@ -79,7 +79,7 @@ export default function DashboardPage() {
           <TrendingUp size={24} className="text-primary" />
           <h1 className="text-2xl font-bold text-foreground">لوحة التحكم</h1>
         </div>
-        <p className="text-muted-foreground text-sm">نظرة عامة على إحصائيات المتجر</p>
+        <p className="text-muted-foreground text-sm">نظرة عامة على إحصائيات متجر الخزاعي الإلكتروني</p>
       </div>
 
       {/* Error */}

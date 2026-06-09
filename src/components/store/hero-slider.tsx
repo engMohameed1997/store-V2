@@ -44,7 +44,7 @@ export default function HeroSlider({ banners }: Props) {
           style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark, #132B45) 100%)' }}
         >
           <div className="text-center text-white px-6">
-            <h2 className="text-3xl md:text-5xl font-black mb-3">مرحباً بك في متجرنا</h2>
+            <h2 className="text-3xl md:text-5xl font-black mb-3">مرحباً بك في متجر الخزاعي </h2>
             <p className="text-lg md:text-xl text-white/80 mb-6">اكتشف أفضل المنتجات بأفضل الأسعار</p>
             <Link
               href="/products"

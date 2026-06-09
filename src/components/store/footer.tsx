@@ -120,7 +120,7 @@ export default function Footer() {
       {/* Bottom Bar */}
       <div className="border-t border-white/10">
         <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between text-sm text-white/50">
-          <p>&copy; {new Date().getFullYear()} المتجر. جميع الحقوق محفوظة.</p>
+          <p>&copy; {new Date().getFullYear()} متجر الخزاعي الإلكتروني. جميع الحقوق محفوظة.</p>
         </div>
       </div>
     </footer>
