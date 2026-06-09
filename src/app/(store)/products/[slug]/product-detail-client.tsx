@@ -96,11 +96,12 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
       return;
     }
     setAddingToCart(true);
-    const res = await postJson('/api/v1/cart', {
+    const body: Record<string, unknown> = {
       productId: product.id,
-      variantId: selectedVariant,
       quantity,
-    }, { token: accessToken! });
+    };
+    if (selectedVariant) body.variantId = selectedVariant;
+    const res = await postJson('/api/v1/cart', body, { token: accessToken! });
     setAddingToCart(false);
     if (res.success) {
       toast.success('تمت الإضافة إلى السلة');

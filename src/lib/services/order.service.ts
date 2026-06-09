@@ -111,7 +111,7 @@ export class OrderService {
       // Re-read product prices and verify active status inside transaction
       let subtotal = 0;
       const orderItems: any[] = [];
-      
+
       for (const item of cart.items) {
         // Verify product is still active
         const freshProduct = await tx.product.findFirst({
@@ -135,7 +135,7 @@ export class OrderService {
         } else {
           price = Number(freshProduct.price);
         }
-        
+
         const total = price * item.quantity;
         subtotal += total;
 
