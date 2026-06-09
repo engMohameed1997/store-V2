@@ -47,6 +47,12 @@ const STATUS_LABELS: Record<string, string> = {
   RETURNED: 'مرتجع',
 };
 
+function formatPrice(price: number | string | undefined | null): string {
+  if (price === undefined || price === null) return '0';
+  const num = typeof price === 'string' ? parseFloat(price) : price;
+  return isNaN(num) ? '0' : num.toLocaleString('ar-IQ');
+}
+
 interface OrderDetail extends AdminOrder {
   address?: {
     street?: string;
@@ -329,8 +335,8 @@ export default function OrderDetailPage() {
                     <tr key={item.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-3 font-medium text-foreground">{item.productName}</td>
                       <td className="px-4 py-3 text-center text-foreground">{item.quantity}</td>
-                      <td className="px-4 py-3 text-foreground">{item.price.toLocaleString('ar-EG')} ر.س</td>
-                      <td className="px-4 py-3 font-medium text-foreground">{item.total.toLocaleString('ar-EG')} ر.س</td>
+                      <td className="px-4 py-3 text-foreground">{formatPrice(item.price)} د.ع</td>
+                      <td className="px-4 py-3 font-medium text-foreground">{formatPrice(item.totalPrice)} د.ع</td>
                     </tr>
                   ))}
                 </tbody>
@@ -344,23 +350,23 @@ export default function OrderDetailPage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">المجموع الفرعي</span>
-              <span className="text-foreground">{order.subtotal.toLocaleString('ar-EG')} ر.س</span>
+              <span className="text-foreground">{formatPrice(order.subtotal)} د.ع</span>
             </div>
-            {order.shippingCost > 0 && (
+            {parseFloat(String(order.shippingCost)) > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">الشحن</span>
-                <span className="text-foreground">{order.shippingCost.toLocaleString('ar-EG')} ر.س</span>
+                <span className="text-foreground">{formatPrice(order.shippingCost)} د.ع</span>
               </div>
             )}
-            {order.discount > 0 && (
+            {parseFloat(String(order.discountAmount)) > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">الخصم</span>
-                <span className="text-green-600">-{order.discount.toLocaleString('ar-EG')} ر.س</span>
+                <span className="text-green-600">-{formatPrice(order.discountAmount)} د.ع</span>
               </div>
             )}
             <div className="flex justify-between pt-2 border-t border-border font-bold">
               <span className="text-foreground">الإجمالي</span>
-              <span className="text-foreground text-lg">{order.total.toLocaleString('ar-EG')} ر.س</span>
+              <span className="text-foreground text-lg">{formatPrice(order.totalAmount)} د.ع</span>
             </div>
           </div>
         </section>

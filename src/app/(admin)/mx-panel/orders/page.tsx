@@ -46,6 +46,12 @@ const STATUS_LABELS: Record<string, string> = {
   RETURNED: 'مرتجع',
 };
 
+function formatPrice(price: number | string | undefined | null): string {
+  if (price === undefined || price === null) return '0';
+  const num = typeof price === 'string' ? parseFloat(price) : price;
+  return isNaN(num) ? '0' : num.toLocaleString('ar-IQ');
+}
+
 export default function OrdersPage() {
   const client = useAdminClient();
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -185,7 +191,7 @@ export default function OrdersPage() {
                         {order.user ? `${order.user.firstName} ${order.user.lastName}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-foreground font-medium">
-                        {order.total.toLocaleString('ar-EG')} ر.س
+                        {formatPrice(order.totalAmount)} د.ع
                       </td>
                       <td className="px-4 py-3">
                         <select

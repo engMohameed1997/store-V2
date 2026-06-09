@@ -87,10 +87,10 @@ export interface AdminOrder {
   status: string;
   paymentStatus: string;
   paymentMethod: string;
-  total: number;
-  subtotal: number;
-  shippingCost: number;
-  discount: number;
+  totalAmount: number | string;
+  subtotal: number | string;
+  shippingCost: number | string;
+  discountAmount: number | string;
   userId: string;
   user?: { id: string; firstName: string; lastName: string; email?: string };
   items?: AdminOrderItem[];
@@ -103,8 +103,8 @@ export interface AdminOrderItem {
   productId: string;
   productName: string;
   quantity: number;
-  price: number;
-  total: number;
+  price: number | string;
+  totalPrice: number | string;
 }
 
 export interface UpdateOrderStatusInput {

@@ -40,8 +40,8 @@ interface OrderDetail {
   status: string;
   paymentStatus: string;
   paymentMethod: string;
-  subtotalAmount: number | string;
-  shippingAmount: number | string;
+  subtotal: number | string;
+  shippingCost: number | string;
   discountAmount: number | string;
   totalAmount: number | string;
   notes: string | null;
@@ -69,9 +69,10 @@ const PAYMENT_LABELS: Record<string, string> = {
   CREDIT_CARD: 'بطاقة ائتمان',
 };
 
-function formatPrice(price: number | string): string {
+function formatPrice(price: number | string | undefined | null): string {
+  if (price === undefined || price === null) return '0';
   const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
+  return isNaN(num) ? '0' : num.toLocaleString('ar-IQ');
 }
 
 export default function OrderDetailPage() {
@@ -172,11 +173,11 @@ export default function OrderDetailPage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>المجموع الفرعي</span>
-              <span>{formatPrice(order.subtotalAmount)} د.ع</span>
+              <span>{formatPrice(order.subtotal)} د.ع</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>التوصيل</span>
-              <span>{formatPrice(order.shippingAmount)} د.ع</span>
+              <span>{formatPrice(order.shippingCost)} د.ع</span>
             </div>
             {parseFloat(String(order.discountAmount)) > 0 && (
               <div className="flex justify-between text-emerald-600">
