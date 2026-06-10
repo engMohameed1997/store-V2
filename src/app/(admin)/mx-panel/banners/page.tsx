@@ -26,7 +26,7 @@ export default function BannersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    title: '', titleAr: '', image: '', mobileImage: '', link: '', position: '0',
+    title: '', titleAr: '', image: '', mobileImage: '', link: '', position: '1',
   });
   const [submitting, setSubmitting] = useState(false);
   const [uploadingField, setUploadingField] = useState<'image' | 'mobileImage' | null>(null);
@@ -55,7 +55,8 @@ export default function BannersPage() {
   }, [fetchBanners]);
 
   const resetForm = () => {
-    setFormData({ title: '', titleAr: '', image: '', mobileImage: '', link: '', position: '0' });
+    const maxPosition = banners.length > 0 ? Math.max(...banners.map(b => b.position)) : 0;
+    setFormData({ title: '', titleAr: '', image: '', mobileImage: '', link: '', position: String(maxPosition + 1) });
     setShowForm(false);
     setEditingId(null);
   };
@@ -278,7 +279,7 @@ export default function BannersPage() {
                 value={formData.position}
                 onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                 className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                min="0"
+                min="1"
               />
             </div>
           </div>
