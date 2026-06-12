@@ -1,0 +1,232 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import {
+  BarChart3,
+  Loader2,
+  AlertCircle,
+  TrendingUp,
+  Users,
+  Package,
+  Eye,
+  FolderTree,
+} from 'lucide-react';
+import { useAuth } from '@/components/providers/auth-provider';
+import { getJson } from '@/lib/client/api';
+
+const ADMIN_BASE = '/api/v1/mx-panel';
+
+interface TopProduct {
+  id: string;
+  name: string;
+  nameAr: string | null;
+  soldCount: number;
+  price: number | string;
+  stock: number;
+}
+
+interface TopCustomer {
+  id: string;
+  name: string;
+  phone: string | null;
+  orderCount: number;
+}
+
+interface TopCategory {
+  id: string;
+  name: string;
+  productCount: number;
+}
+
+interface MostViewedProduct {
+  id: string;
+  name: string;
+  nameAr: string | null;
+  viewCount: number;
+  soldCount: number;
+}
+
+interface ReportsData {
+  topProducts: TopProduct[];
+  topCustomers: TopCustomer[];
+  topCategories: TopCategory[];
+  mostViewedProducts: MostViewedProduct[];
+}
+
+function formatPrice(price: number | string): string {
+  const num = typeof price === 'string' ? parseFloat(price) : price;
+  return num.toLocaleString('ar-IQ');
+}
+
+export default function ReportsPage() {
+  const { accessToken } = useAuth();
+  const [data, setData] = useState<ReportsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const opts = { token: accessToken! };
+
+  const fetchReports = useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    try {
+      const result = await getJson<ReportsData>(`${ADMIN_BASE}/analytics/reports`, opts);
+      if (result.success && result.data) {
+        setData(result.data as unknown as ReportsData);
+      }
+    } catch {
+      setError('فشل في تحميل التقارير');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <AlertCircle size={48} className="mx-auto mb-3 text-red-500 opacity-60" />
+        <p className="text-red-500 text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <BarChart3 size={24} className="text-primary" />
+        <h1 className="text-2xl font-bold text-foreground">التقارير والتحليلات</h1>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Selling Products */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={18} className="text-emerald-500" />
+            <h2 className="font-bold text-foreground">المنتجات الأكثر مبيعاً</h2>
+          </div>
+          {data?.topProducts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>
+          ) : (
+            <div className="space-y-2">
+              {data?.topProducts.map((p, i) => (
+                <div key={p.id} className="flex items-center gap-3 py-2 border-b border-border last:border-b-0">
+                  <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{p.nameAr || p.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{formatPrice(p.price)} د.ع • مخزون: {p.stock}</p>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                    {p.soldCount} مبيعة
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Most Viewed Products */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Eye size={18} className="text-blue-500" />
+            <h2 className="font-bold text-foreground">المنتجات الأكثر مشاهدة</h2>
+          </div>
+          {data?.mostViewedProducts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>
+          ) : (
+            <div className="space-y-2">
+              {data?.mostViewedProducts.map((p, i) => (
+                <div key={p.id} className="flex items-center gap-3 py-2 border-b border-border last:border-b-0">
+                  <span className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{p.nameAr || p.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{p.soldCount} مبيعة</p>
+                  </div>
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                    {p.viewCount.toLocaleString('ar-IQ')} مشاهدة
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Top Customers */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Users size={18} className="text-purple-500" />
+            <h2 className="font-bold text-foreground">العملاء الأكثر شراءً</h2>
+          </div>
+          {data?.topCustomers.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>
+          ) : (
+            <div className="space-y-2">
+              {data?.topCustomers.map((c, i) => (
+                <div key={c.id} className="flex items-center gap-3 py-2 border-b border-border last:border-b-0">
+                  <span className="w-6 h-6 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 text-xs font-bold flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{c.name}</p>
+                    {c.phone && <p className="text-[11px] text-muted-foreground" dir="ltr">{c.phone}</p>}
+                  </div>
+                  <span className="text-sm font-bold text-purple-600 dark:text-purple-400 shrink-0">
+                    {c.orderCount} طلب
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Top Categories */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <FolderTree size={18} className="text-amber-500" />
+            <h2 className="font-bold text-foreground">الأقسام الأكثر منتجات</h2>
+          </div>
+          {data?.topCategories.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>
+          ) : (
+            <div className="space-y-2">
+              {data?.topCategories.map((c, i) => (
+                <div key={c.id} className="flex items-center gap-3 py-2 border-b border-border last:border-b-0">
+                  <span className="w-6 h-6 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{c.name}</p>
+                  </div>
+                  <div className="shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Package size={14} className="text-muted-foreground" />
+                      <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                        {c.productCount} منتج
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

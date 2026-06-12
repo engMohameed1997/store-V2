@@ -346,6 +346,9 @@ model Product {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   deletedAt       DateTime? @map("deleted_at")
+  warrantyDuration Int?    @map("warranty_duration")
+  warrantyUnit    String?  @map("warranty_unit")
+  warrantyCoverage String? @map("warranty_coverage")
 
   // Relations
   category        Category?        @relation(fields: [categoryId], references: [id])
@@ -662,6 +665,7 @@ model OrderItem {
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   returnItems ReturnItem[]
   review      Review?
+  warranty    Warranty?
 
   @@index([orderId])
   @@index([productId])
@@ -1175,4 +1179,29 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ============================================
+// WARRANTIES
+// ============================================
+
+model Warranty {
+  id           String   @id @default(cuid())
+  orderItemId  String   @unique @map("order_item_id")
+  productName  String   @map("product_name")
+  duration     Int      @map("duration") // e.g. 12
+  unit         String   @map("unit")     // "MONTHS", "DAYS", "YEARS"
+  coverage     String?  @map("coverage")
+  startDate    DateTime @map("start_date")
+  endDate      DateTime @map("end_date")
+  serialNumber String?  @map("serial_number")
+  status       String   @default("ACTIVE") // "ACTIVE", "EXPIRED", "VOIDED"
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@index([status])
+  @@map("warranties")
 }

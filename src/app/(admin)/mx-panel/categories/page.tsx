@@ -10,6 +10,8 @@ import {
   Trash2,
   X,
   Check,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
 import type { AdminCategory, CreateCategoryInput, UpdateCategoryInput } from '@/lib/client/admin';
@@ -21,7 +23,7 @@ export default function CategoriesPage() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', nameAr: '', slug: '' });
+  const [formData, setFormData] = useState({ name: '', nameAr: '', slug: '', position: '0' });
   const [submitting, setSubmitting] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
 
@@ -48,7 +50,7 @@ export default function CategoriesPage() {
   }, [fetchCategories]);
 
   const resetForm = () => {
-    setFormData({ name: '', nameAr: '', slug: '' });
+    setFormData({ name: '', nameAr: '', slug: '', position: '0' });
     setShowForm(false);
     setEditingId(null);
   };
@@ -85,6 +87,7 @@ export default function CategoriesPage() {
           name: trimmedName,
           nameAr: formData.nameAr.trim() || undefined,
           slug: trimmedSlug,
+          position: Number(formData.position) || 0,
         };
         const result = await client.categories.update(editingId, input);
         if (result.success) {
@@ -98,6 +101,7 @@ export default function CategoriesPage() {
           name: trimmedName,
           nameAr: formData.nameAr.trim() || undefined,
           slug: trimmedSlug,
+          position: Number(formData.position) || 0,
         };
         const result = await client.categories.create(input);
         if (result.success) {
@@ -115,7 +119,7 @@ export default function CategoriesPage() {
   };
 
   const handleEdit = (category: AdminCategory) => {
-    setFormData({ name: category.name, nameAr: category.nameAr || '', slug: category.slug });
+    setFormData({ name: category.name, nameAr: category.nameAr || '', slug: category.slug, position: String(category.position || 0) });
     setEditingId(category.id);
     setShowForm(true);
   };
@@ -133,6 +137,23 @@ export default function CategoriesPage() {
       }
     } catch {
       alert('فشل في حذف الصنف');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleMove = async (category: AdminCategory, direction: 'up' | 'down') => {
+    if (!client || actionId) return;
+    setActionId(category.id);
+    try {
+      const currentPos = category.position || 0;
+      const targetPos = direction === 'up' ? Math.max(0, currentPos - 1) : currentPos + 1;
+      const result = await client.categories.update(category.id, { position: targetPos });
+      if (result.success) {
+        await fetchCategories();
+      }
+    } catch {
+      // Silent
     } finally {
       setActionId(null);
     }
@@ -159,7 +180,7 @@ export default function CategoriesPage() {
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 bg-card border border-border rounded-2xl p-5">
           <h3 className="font-bold text-foreground mb-4">{editingId ? 'تعديل الصنف' : 'إضافة صنف جديد'}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">الاسم (إنجليزي) *</label>
               <input
@@ -188,6 +209,16 @@ export default function CategoriesPage() {
                 className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm font-mono"
                 dir="ltr"
                 required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">الترتيب</label>
+              <input
+                type="number"
+                value={formData.position}
+                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                min="0"
               />
             </div>
           </div>
@@ -235,6 +266,7 @@ export default function CategoriesPage() {
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">الاسم</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">الاسم (عربي)</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Slug</th>
+                  <th className="text-center px-4 py-3 font-medium text-muted-foreground">الترتيب</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">الحالة</th>
                   <th className="text-center px-4 py-3 font-medium text-muted-foreground">إجراءات</th>
                 </tr>
@@ -245,6 +277,25 @@ export default function CategoriesPage() {
                     <td className="px-4 py-3 font-medium text-foreground">{cat.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{cat.nameAr || '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground" dir="ltr">{cat.slug}</td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleMove(cat, 'up')}
+                          disabled={actionId !== null}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground transition disabled:opacity-50"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <span className="font-mono text-xs w-6">{cat.position ?? 0}</span>
+                        <button
+                          onClick={() => handleMove(cat, 'down')}
+                          disabled={actionId !== null}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground transition disabled:opacity-50"
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
                         cat.isActive

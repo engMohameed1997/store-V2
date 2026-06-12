@@ -3,6 +3,7 @@ import { Errors } from "@/lib/api/errors";
 import type { CreateOrderInput, CancelOrderInput, UpdateOrderStatusInput } from "@/lib/validators/order";
 import { MAX_PAGINATION_LIMIT } from "@/lib/constants/pagination";
 import crypto from "crypto";
+import { WarrantyService } from "./warranty.service";
 
 const ORDER_INCLUDE = {
   items: {
@@ -651,6 +652,10 @@ export class OrderService {
           location: input.location,
         },
       });
+
+      if (input.status === "SHIPPED" || input.status === "DELIVERED") {
+        await WarrantyService.activateWarrantiesForOrder(orderId, tx);
+      }
     });
 
     return this.getById(orderId);

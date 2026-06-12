@@ -38,6 +38,9 @@ export interface AdminProduct {
   categoryId?: string;
   brandId?: string;
   images: string[];
+  warrantyDuration?: number;
+  warrantyUnit?: string;
+  warrantyCoverage?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,6 +72,9 @@ export interface CreateProductInput {
   isActive?: boolean;
   isFeatured?: boolean;
   isDigital?: boolean;
+  warrantyDuration?: number;
+  warrantyUnit?: string;
+  warrantyCoverage?: string;
   categoryId?: string;
   brandId?: string;
   metaTitle?: string;
@@ -265,6 +271,43 @@ export interface AdminReview {
   createdAt: string;
 }
 
+// ─── Warranty Types ─────────────────────────────────────────────
+
+export interface AdminWarranty {
+  id: string;
+  orderItemId: string;
+  productName: string;
+  duration: number;
+  unit: string;
+  coverage?: string;
+  startDate: string;
+  endDate: string;
+  serialNumber?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  orderItem?: {
+    id: string;
+    orderId: string;
+    order?: {
+      orderNumber: string;
+      createdAt: string;
+      user?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        phone?: string;
+      };
+    };
+  };
+}
+
+export interface UpdateWarrantyInput {
+  serialNumber?: string;
+  status?: string;
+  coverage?: string;
+}
+
 // ─── Helper: build query string ─────────────────────────────────
 
 function buildQuery(params: Record<string, unknown>): string {
@@ -425,6 +468,30 @@ export function createAdminClient(token: string) {
       },
       delete(id: string) {
         return deleteJson(`${ADMIN_BASE}/reviews/${encodeURIComponent(id)}`, opts);
+      },
+    },
+
+    // ── Warranties ────────────────────────────────────────────
+    warranties: {
+      list(params?: ListParams & { status?: string }) {
+        const qs = buildQuery({ ...params });
+        return getJson<AdminWarranty[]>(`${ADMIN_BASE}/warranties${qs}`, opts) as Promise<ApiResult<AdminWarranty[]>>;
+      },
+      get(id: string) {
+        return getJson<AdminWarranty>(`${ADMIN_BASE}/warranties/${encodeURIComponent(id)}`, opts);
+      },
+      update(id: string, input: UpdateWarrantyInput) {
+        return putJson<AdminWarranty>(`${ADMIN_BASE}/warranties/${encodeURIComponent(id)}`, input, opts);
+      },
+    },
+
+    // ── Analytics ─────────────────────────────────────────────
+    analytics: {
+      getDashboard() {
+        return getJson<any>(`${ADMIN_BASE}/analytics`, opts);
+      },
+      getReports() {
+        return getJson<any>(`${ADMIN_BASE}/analytics/reports`, opts);
       },
     },
   };

@@ -12,6 +12,11 @@ import {
   Ticket,
   Image,
   Star,
+  Shield,
+  Truck,
+  Settings,
+  BarChart3,
+  FileText,
   LogOut,
   ChevronRight,
   ChevronLeft,
@@ -30,6 +35,11 @@ const NAV_ITEMS = [
   { href: '/mx-panel/coupons', label: 'الكوبونات', icon: Ticket },
   { href: '/mx-panel/banners', label: 'البانرات', icon: Image },
   { href: '/mx-panel/reviews', label: 'المراجعات', icon: Star },
+  { href: '/mx-panel/warranties', label: 'الضمانات', icon: Shield },
+  { href: '/mx-panel/shipping', label: 'التوصيل', icon: Truck },
+  { href: '/mx-panel/invoices', label: 'الفواتير', icon: FileText },
+  { href: '/mx-panel/reports', label: 'التقارير', icon: BarChart3 },
+  { href: '/mx-panel/settings', label: 'الإعدادات', icon: Settings },
 ];
 
 interface AdminSidebarProps {

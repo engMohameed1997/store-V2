@@ -62,6 +62,9 @@ export default function EditProductPage() {
     brandId: '',
     metaTitle: '',
     metaDescription: '',
+    warrantyDuration: '',
+    warrantyUnit: '',
+    warrantyCoverage: '',
   });
 
   const [images, setImages] = useState<ImageInput[]>([]);
@@ -94,6 +97,9 @@ export default function EditProductPage() {
           brandId: (p.brandId as string) || '',
           metaTitle: (p.metaTitle as string) || '',
           metaDescription: (p.metaDescription as string) || '',
+          warrantyDuration: p.warrantyDuration ? String(p.warrantyDuration) : '',
+          warrantyUnit: (p.warrantyUnit as string) || '',
+          warrantyCoverage: (p.warrantyCoverage as string) || '',
         });
 
         // Load images — clear any legacy external URLs that don't match the upload path pattern
@@ -191,6 +197,17 @@ export default function EditProductPage() {
         categoryId: formData.categoryId || undefined,
         brandId: formData.brandId || undefined,
       };
+
+      // Warranty
+      if (formData.warrantyDuration && formData.warrantyUnit) {
+        payload.warrantyDuration = Number(formData.warrantyDuration);
+        payload.warrantyUnit = formData.warrantyUnit;
+        payload.warrantyCoverage = formData.warrantyCoverage.trim() || null;
+      } else {
+        payload.warrantyDuration = null;
+        payload.warrantyUnit = null;
+        payload.warrantyCoverage = null;
+      }
 
       // Images
       const filteredImages = images.filter((img) => img.url.trim());
@@ -647,6 +664,49 @@ export default function EditProductPage() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* Warranty */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <h2 className="font-bold text-foreground mb-4">الضمان</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">مدة الضمان</label>
+              <input
+                type="number"
+                value={formData.warrantyDuration}
+                onChange={(e) => setFormData({ ...formData, warrantyDuration: e.target.value })}
+                placeholder="مثال: 12"
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                min="1"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">وحدة المدة</label>
+              <select
+                value={formData.warrantyUnit}
+                onChange={(e) => setFormData({ ...formData, warrantyUnit: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+              >
+                <option value="">اختيار...</option>
+                <option value="DAYS">يوم</option>
+                <option value="MONTHS">شهر</option>
+                <option value="YEARS">سنة</option>
+              </select>
+            </div>
+            <div className="sm:col-span-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">تغطية الضمان</label>
+              <input
+                type="text"
+                value={formData.warrantyCoverage}
+                onChange={(e) => setFormData({ ...formData, warrantyCoverage: e.target.value })}
+                placeholder="مثال: ضمان عيوب الصناعة"
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                maxLength={1000}
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">اذا تم تحديد المدة والوحدة، سيتم إنشاء بطاقة ضمان تلقائياً عند شحن/تسليم الطلب</p>
         </section>
 
         {/* SEO */}
