@@ -92,9 +92,6 @@ function handleCors(request: NextRequest, response: NextResponse): NextResponse 
   return response;
 }
 
-// Auth pages that authenticated users should NOT access (redirect to /)
-const AUTH_GUEST_ONLY: string[] = ["/login", "/register", "/forgot-password"];
-
 // Auth pages that require specific conditions (handled individually below)
 // verify-email: needs session | verify-phone: needs phone param | reset-password: guest only
 
@@ -105,11 +102,6 @@ function isAuthenticated(request: NextRequest): boolean {
 function handleAuthRoutes(request: NextRequest): NextResponse | null {
   const { pathname, searchParams } = request.nextUrl;
   const hasSession = isAuthenticated(request);
-
-  // Authenticated users should not access login/register/forgot-password
-  if (AUTH_GUEST_ONLY.includes(pathname) && hasSession) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
 
   // Conditional pages: verify-phone requires phone param or session
   if (pathname === "/verify-phone") {

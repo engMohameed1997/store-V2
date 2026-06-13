@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Mail, Lock, Eye, EyeOff, User, Phone, UserPlus, Loader2 } from 'lucide-react';
 import { authClient } from '@/lib/client/auth';
+import { useAuth } from '@/components/providers/auth-provider';
 import { MSG } from '@/lib/messages';
 
 type Mode = 'email' | 'phone';
@@ -16,6 +17,13 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<Mode>('email');
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.push('/');
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
