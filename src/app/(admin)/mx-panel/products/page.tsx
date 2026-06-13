@@ -149,7 +149,7 @@ export default function ProductsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-foreground">
-                        {product.price.toLocaleString('ar-EG')} ر.س
+                        {product.price.toLocaleString('ar-EG')} د.ع
                         {product.compareAtPrice && (
                           <span className="text-xs text-muted-foreground line-through mr-2">
                             {product.compareAtPrice.toLocaleString('ar-EG')}

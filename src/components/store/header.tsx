@@ -232,7 +232,7 @@ export default function Header() {
                         {cat.image ? (
                           <img
                             src={cat.image}
-                            alt={cat.name}
+                            alt={cat.nameAr || cat.name}
                             className="w-8 h-8 rounded-lg object-cover"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -296,7 +296,7 @@ export default function Header() {
                   {cat.image ? (
                     <img
                       src={cat.image}
-                      alt={cat.name}
+                      alt={cat.nameAr || cat.name}
                       className="w-9 h-9 rounded-lg object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';

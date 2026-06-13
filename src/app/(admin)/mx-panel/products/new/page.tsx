@@ -16,7 +16,7 @@ import {
 import { useAdminClient } from '@/hooks/use-admin-client';
 import { useAuth } from '@/components/providers/auth-provider';
 import { uploadFile } from '@/lib/client/api';
-import type { AdminCategory, AdminBrand, CreateProductInput } from '@/lib/client/admin';
+import type { AdminCategory, AdminBrand, AdminBranch, CreateProductInput } from '@/lib/client/admin';
 
 interface ImageInput {
   url: string;
@@ -39,6 +39,11 @@ export default function NewProductPage() {
   const [error, setError] = useState('');
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [brands, setBrands] = useState<AdminBrand[]>([]);
+  const [branches, setBranches] = useState<AdminBranch[]>([]);
+
+  const [originalPrice, setOriginalPrice] = useState('');
+  const [discountType, setDiscountType] = useState<'none' | 'percentage' | 'amount'>('none');
+  const [discountValue, setDiscountValue] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -56,6 +61,7 @@ export default function NewProductPage() {
     isDigital: false,
     categoryId: '',
     brandId: '',
+    branchId: '',
     metaTitle: '',
     metaDescription: '',
     warrantyDuration: '',
@@ -66,18 +72,50 @@ export default function NewProductPage() {
   const [images, setImages] = useState<ImageInput[]>([]);
   const [specs, setSpecs] = useState<SpecInput[]>([]);
 
+  useEffect(() => {
+    const orig = Number(originalPrice);
+    if (!orig || orig <= 0) {
+      setFormData((prev) => ({ ...prev, price: originalPrice, compareAtPrice: '' }));
+      return;
+    }
+
+    if (discountType === 'none') {
+      setFormData((prev) => ({ ...prev, price: originalPrice, compareAtPrice: '' }));
+    } else if (discountType === 'percentage') {
+      const val = Number(discountValue) || 0;
+      const finalPrice = Math.max(0, orig * (1 - val / 100));
+      setFormData((prev) => ({
+        ...prev,
+        price: finalPrice.toFixed(2),
+        compareAtPrice: originalPrice,
+      }));
+    } else if (discountType === 'amount') {
+      const val = Number(discountValue) || 0;
+      const finalPrice = Math.max(0, orig - val);
+      setFormData((prev) => ({
+        ...prev,
+        price: finalPrice.toFixed(2),
+        compareAtPrice: originalPrice,
+      }));
+    }
+  }, [originalPrice, discountType, discountValue]);
+
   const fetchLookups = useCallback(async () => {
     if (!client) return;
     try {
-      const [catResult, brandResult] = await Promise.allSettled([
+      const [catResult, brandResult, branchResult] = await Promise.allSettled([
         client.categories.list(),
         client.brands.list(),
+        client.branches.list(),
       ]);
       if (catResult.status === 'fulfilled' && catResult.value.success && catResult.value.data) {
         setCategories(catResult.value.data as AdminCategory[]);
       }
       if (brandResult.status === 'fulfilled' && brandResult.value.success && brandResult.value.data) {
         setBrands(brandResult.value.data as AdminBrand[]);
+      }
+      if (branchResult.status === 'fulfilled' && branchResult.value.success && branchResult.value.data) {
+        setBranches(branchResult.value.data as AdminBranch[]);
       }
     } catch {
       // Silent - lookups are optional
@@ -106,7 +144,12 @@ export default function NewProductPage() {
 
     const compareAtPrice = formData.compareAtPrice ? Number(formData.compareAtPrice) : undefined;
     if (compareAtPrice !== undefined && compareAtPrice <= price) {
-      setError('سعر المقارنة يجب أن يكون أكبر من السعر الحالي');
+      setError('سعر المقارنة (السعر الأصلي قبل الخصم) يجب أن يكون أكبر من السعر النهائي');
+      return;
+    }
+
+    if (!formData.branchId) {
+      setError('الرجاء اختيار الفرع التابع له المنتج');
       return;
     }
 
@@ -127,6 +170,7 @@ export default function NewProductPage() {
         isDigital: formData.isDigital,
         categoryId: formData.categoryId || undefined,
         brandId: formData.brandId || undefined,
+        branchId: formData.branchId || undefined,
       };
 
       // Images
@@ -312,11 +356,11 @@ export default function NewProductPage() {
           <h2 className="font-bold text-foreground mb-4">التسعير والمخزون</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">السعر *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">السعر الأصلي *</label>
               <input
                 type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                value={originalPrice}
+                onChange={(e) => setOriginalPrice(e.target.value)}
                 className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
                 min="0.01"
                 step="0.01"
@@ -324,16 +368,42 @@ export default function NewProductPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">سعر المقارنة</label>
-              <input
-                type="number"
-                value={formData.compareAtPrice}
-                onChange={(e) => setFormData({ ...formData, compareAtPrice: e.target.value })}
+              <label className="block text-xs font-medium text-muted-foreground mb-1">نوع الخصم</label>
+              <select
+                value={discountType}
+                onChange={(e) => {
+                  setDiscountType(e.target.value as any);
+                  setDiscountValue('');
+                }}
                 className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                min="0"
-                step="0.01"
-              />
+              >
+                <option value="none">بدون خصم</option>
+                <option value="percentage">نسبة مئوية (%)</option>
+                <option value="amount">مبلغ ثابت</option>
+              </select>
             </div>
+            {discountType !== 'none' && (
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  {discountType === 'percentage' ? 'نسبة الخصم (%)' : 'قيمة الخصم'}
+                </label>
+                <input
+                  type="number"
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                  min="0"
+                  max={discountType === 'percentage' ? '100' : undefined}
+                  step={discountType === 'percentage' ? '1' : '0.01'}
+                />
+              </div>
+            )}
+            {discountType !== 'none' && originalPrice && (
+              <div className="sm:col-span-2 lg:col-span-3 p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">السعر النهائي بعد الخصم:</span>
+                <span className="text-sm font-bold text-primary">{formData.price} د.ع</span>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">سعر التكلفة</label>
               <input
@@ -381,8 +451,8 @@ export default function NewProductPage() {
 
         {/* Classification */}
         <section className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-bold text-foreground mb-4">التصنيف</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <h2 className="font-bold text-foreground mb-4">التصنيف والفرع</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">الصنف</label>
               <select
@@ -409,6 +479,22 @@ export default function NewProductPage() {
                 {brands.map((brand) => (
                   <option key={brand.id} value={brand.id}>
                     {brand.nameAr || brand.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">الفرع *</label>
+              <select
+                value={formData.branchId}
+                onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                required
+              >
+                <option value="">اختر فرع المنتج...</option>
+                {branches.map((br) => (
+                  <option key={br.id} value={br.id}>
+                    {br.nameAr || br.name}
                   </option>
                 ))}
               </select>

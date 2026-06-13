@@ -311,7 +311,7 @@ export default function CouponsPage() {
                         {coupon.type === 'PERCENTAGE' ? 'نسبة %' : 'مبلغ ثابت'}
                       </td>
                       <td className="px-4 py-3 font-medium text-foreground">
-                        {coupon.value}{coupon.type === 'PERCENTAGE' ? '%' : ' ر.س'}
+                        {coupon.value}{coupon.type === 'PERCENTAGE' ? '%' : ' د.ع'}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {coupon.usageCount}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ''}

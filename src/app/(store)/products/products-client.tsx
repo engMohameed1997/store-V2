@@ -108,7 +108,7 @@ export default function ProductsPageClient({ products, total, page, limit, categ
                       onClick={() => updateFilter('category', cat.slug)}
                       className={`block w-full text-right px-3 py-2 rounded-lg text-sm transition ${currentFilters.category === cat.slug ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted'}`}
                     >
-                      {cat.name}
+                      {cat.nameAr || cat.name}
                     </button>
                   ))}
                 </div>

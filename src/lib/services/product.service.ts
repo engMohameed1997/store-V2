@@ -24,6 +24,7 @@ const PRODUCT_INCLUDE = {
   },
   category: { select: { id: true, name: true, slug: true, nameAr: true } },
   brand: { select: { id: true, name: true, slug: true, nameAr: true } },
+  branchInventories: { select: { branchId: true, stock: true } },
 };
 
 const PRODUCT_LIST_SELECT = {
@@ -190,9 +191,9 @@ export class ProductService {
 
     const sku = await generateUniqueSku();
 
-    const { images, specs, variants, ...productData } = input;
+    const { images, specs, variants, branchId, ...productData } = input;
 
-    return db.product.create({
+    const product = await db.product.create({
       data: {
         ...productData,
         slug: finalSlug,
@@ -215,13 +216,20 @@ export class ProductService {
       },
       include: PRODUCT_INCLUDE,
     });
+
+    if (branchId) {
+      const { BranchService } = await import("./branch.service");
+      await BranchService.setInventory(branchId, product.id, null, input.stock || 0);
+    }
+
+    return product;
   }
 
   static async update(id: string, input: UpdateProductInput) {
     const existing = await db.product.findUnique({ where: { id, deletedAt: null } });
     if (!existing) throw Errors.notFound("Product");
 
-    const { images, specs, variants, ...productData } = input;
+    const { images, specs, variants, branchId, ...productData } = input;
 
     let slugData = {};
     if (input.name && input.name !== existing.name) {
@@ -244,7 +252,7 @@ export class ProductService {
       await db.productSpec.deleteMany({ where: { productId: id } });
     }
 
-    return db.product.update({
+    const updatedProduct = await db.product.update({
       where: { id },
       data: {
         ...productData,
@@ -254,6 +262,19 @@ export class ProductService {
       },
       include: PRODUCT_INCLUDE,
     });
+
+    if (branchId !== undefined) {
+      await db.branchInventory.deleteMany({ where: { productId: id } });
+      if (branchId) {
+        const { BranchService } = await import("./branch.service");
+        await BranchService.setInventory(branchId, id, null, input.stock ?? updatedProduct.stock);
+      }
+    }
+
+    return db.product.findUnique({
+      where: { id },
+      include: PRODUCT_INCLUDE,
+    }) as any;
   }
 
   static async softDelete(id: string) {

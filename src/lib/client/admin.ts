@@ -190,6 +190,19 @@ export interface CreateBrandInput {
 
 export type UpdateBrandInput = Partial<CreateBrandInput>;
 
+// ─── Branch Types ───────────────────────────────────────────────
+
+export interface AdminBranch {
+  id: string;
+  name: string;
+  nameAr?: string | null;
+  address: string;
+  addressAr?: string | null;
+  phone: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 // ─── Coupon Types ───────────────────────────────────────────────
 
 export interface AdminCoupon {
@@ -492,6 +505,13 @@ export function createAdminClient(token: string) {
       },
       getReports() {
         return getJson<any>(`${ADMIN_BASE}/analytics/reports`, opts);
+      },
+    },
+
+    // ── Branches ──────────────────────────────────────────────
+    branches: {
+      list() {
+        return getJson<AdminBranch[]>(`${ADMIN_BASE}/branches`, opts);
       },
     },
   };

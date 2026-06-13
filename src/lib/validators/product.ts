@@ -19,6 +19,7 @@ export const createProductSchema = z.object({
   warrantyCoverage: z.string().max(1000).optional(),
   categoryId: z.string().cuid().optional(),
   brandId: z.string().cuid().optional(),
+  branchId: z.string().cuid().optional(),
   metaTitle: z.string().max(70).optional(),
   metaDescription: z.string().max(160).optional(),
   images: z
