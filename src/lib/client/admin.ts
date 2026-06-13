@@ -98,7 +98,15 @@ export interface AdminOrder {
   shippingCost: number | string;
   discountAmount: number | string;
   userId: string;
-  user?: { id: string; firstName: string; lastName: string; email?: string };
+  user?: { id: string; firstName: string; lastName: string; email?: string; phone?: string };
+  shippingAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    phone?: string;
+  };
   items?: AdminOrderItem[];
   createdAt: string;
   updatedAt: string;

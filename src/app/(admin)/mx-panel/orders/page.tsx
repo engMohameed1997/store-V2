@@ -174,6 +174,8 @@ export default function OrdersPage() {
                   <tr className="border-b border-border bg-muted/50">
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground">رقم الطلب</th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground">العميل</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">الهاتف</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">العنوان</th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground">الإجمالي</th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground">الحالة</th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground">الدفع</th>
@@ -189,6 +191,12 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-4 py-3 text-foreground">
                         {order.user ? `${order.user.firstName} ${order.user.lastName}` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-foreground text-xs" dir="ltr">
+                        {order.user?.phone || order.shippingAddress?.phone || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-foreground text-xs max-w-[150px] truncate">
+                        {order.shippingAddress?.city ? `${order.shippingAddress.city}${order.shippingAddress?.state ? `, ${order.shippingAddress.state}` : ''}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-foreground font-medium">
                         {formatPrice(order.totalAmount)} د.ع

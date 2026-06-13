@@ -18,7 +18,7 @@ export default async function HomePage() {
   ]);
 
   return (
-    <div className="pb-12">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
       {/* Hero Slider */}
       <HeroSlider banners={serialize(banners) as any} />
 
