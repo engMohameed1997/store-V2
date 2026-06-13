@@ -53,7 +53,7 @@ export default function CategoryGrid({ categories }: Props) {
                 )}
               </div>
               <span className="text-xs md:text-sm text-foreground text-center max-w-[90px] line-clamp-1 group-hover:text-primary font-medium transition">
-                {cat.name}
+                {cat.nameAr || cat.name}
               </span>
             </Link>
           ))}

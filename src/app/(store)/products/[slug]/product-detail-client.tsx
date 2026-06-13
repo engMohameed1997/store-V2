@@ -46,7 +46,7 @@ interface ProductDetail {
   images: ProductImage[];
   specs: ProductSpec[];
   variants: ProductVariant[];
-  category: { id: string; name: string; slug: string } | null;
+  category: { id: string; name: string; slug: string; nameAr?: string | null } | null;
   brand: { id: string; name: string; slug: string } | null;
 }
 
@@ -134,7 +134,7 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
           <>
             <ChevronLeft size={14} />
             <Link href={`/category/${product.category.slug}`} className="hover:text-primary transition">
-              {product.category.name}
+              {product.category.nameAr || product.category.name}
             </Link>
           </>
         )}

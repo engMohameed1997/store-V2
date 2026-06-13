@@ -41,8 +41,8 @@ const PRODUCT_LIST_SELECT = {
   soldCount: true,
   createdAt: true,
   images: { where: { isPrimary: true }, take: 1 },
-  category: { select: { id: true, name: true, slug: true } },
-  brand: { select: { id: true, name: true, slug: true } },
+  category: { select: { id: true, name: true, slug: true, nameAr: true } },
+  brand: { select: { id: true, name: true, slug: true, nameAr: true } },
 };
 
 function generateSlug(name: string): string {

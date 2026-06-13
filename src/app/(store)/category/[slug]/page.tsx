@@ -41,12 +41,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         <ChevronLeft size={14} />
         <Link href="/products" className="hover:text-primary transition">المنتجات</Link>
         <ChevronLeft size={14} />
-        <span className="text-foreground font-medium">{category.name}</span>
+        <span className="text-foreground font-medium">{category.nameAr || category.name}</span>
       </nav>
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">{category.name}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">{category.nameAr || category.name}</h1>
         {category.description && (
           <p className="text-muted-foreground mt-2 text-sm">{category.description}</p>
         )}
@@ -62,7 +62,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               href={`/category/${child.slug}`}
               className="px-4 py-2 rounded-xl bg-card border border-border text-sm text-foreground hover:border-primary hover:text-primary transition"
             >
-              {child.name}
+              {child.nameAr || child.name}
             </Link>
           ))}
         </div>

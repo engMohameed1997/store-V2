@@ -243,7 +243,7 @@ export default function Header() {
                         <span className={`w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-sm ${cat.image ? 'hidden' : ''}`}>
                           📁
                         </span>
-                        <span className="text-foreground group-hover:text-primary transition text-sm">{cat.name}</span>
+                        <span className="text-foreground group-hover:text-primary transition text-sm">{cat.nameAr || cat.name}</span>
                       </span>
                       {cat.children.length > 0 && (
                         <ChevronDown size={14} className="text-muted-foreground -rotate-90" />
@@ -261,7 +261,7 @@ export default function Header() {
                 href={`/category/${cat.slug}`}
                 className="px-3 py-2 rounded-lg hover:bg-primary/5 text-foreground hover:text-primary whitespace-nowrap transition text-sm"
               >
-                {cat.name}
+                {cat.nameAr || cat.name}
               </Link>
             ))}
           </div>
@@ -305,7 +305,7 @@ export default function Header() {
                     />
                   ) : null}
                   <span className={`w-9 h-9 rounded-lg bg-primary/5 flex items-center justify-center text-base ${cat.image ? 'hidden' : ''}`}>📁</span>
-                  <span className="text-foreground text-sm">{cat.name}</span>
+                  <span className="text-foreground text-sm">{cat.nameAr || cat.name}</span>
                 </Link>
               ))}
             </div>
