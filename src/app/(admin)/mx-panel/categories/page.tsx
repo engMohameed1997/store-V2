@@ -12,20 +12,44 @@ import {
   Check,
   ArrowUp,
   ArrowDown,
+  Upload,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
+import { useAuth } from '@/components/providers/auth-provider';
+import { uploadFile } from '@/lib/client/api';
 import type { AdminCategory, CreateCategoryInput, UpdateCategoryInput } from '@/lib/client/admin';
 
 export default function CategoriesPage() {
   const client = useAdminClient();
+  const { accessToken } = useAuth();
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', nameAr: '', slug: '', position: '0' });
+  const [formData, setFormData] = useState({ name: '', nameAr: '', slug: '', position: '0', image: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+
+  const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
+
+  const handleImageUpload = async (file?: File) => {
+    if (!file || !accessToken) return;
+    setUploadingImage(true);
+    try {
+      const result = await uploadFile(file, 'categories', accessToken);
+      if (result.success && result.data) {
+        setFormData((prev) => ({ ...prev, image: result.data!.url }));
+      } else if (!result.success) {
+        alert(`فشل رفع الصورة: ${result.error.message}`);
+      }
+    } catch {
+      alert('فشل في رفع الصورة، حاول مرة أخرى');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const fetchCategories = useCallback(async () => {
     if (!client) return;
@@ -50,7 +74,7 @@ export default function CategoriesPage() {
   }, [fetchCategories]);
 
   const resetForm = () => {
-    setFormData({ name: '', nameAr: '', slug: '', position: '0' });
+    setFormData({ name: '', nameAr: '', slug: '', position: '0', image: '' });
     setShowForm(false);
     setEditingId(null);
   };
@@ -88,6 +112,7 @@ export default function CategoriesPage() {
           nameAr: formData.nameAr.trim() || undefined,
           slug: trimmedSlug,
           position: Number(formData.position) || 0,
+          image: formData.image.trim() || undefined,
         };
         const result = await client.categories.update(editingId, input);
         if (result.success) {
@@ -102,6 +127,7 @@ export default function CategoriesPage() {
           nameAr: formData.nameAr.trim() || undefined,
           slug: trimmedSlug,
           position: Number(formData.position) || 0,
+          image: formData.image.trim() || undefined,
         };
         const result = await client.categories.create(input);
         if (result.success) {
@@ -119,7 +145,13 @@ export default function CategoriesPage() {
   };
 
   const handleEdit = (category: AdminCategory) => {
-    setFormData({ name: category.name, nameAr: category.nameAr || '', slug: category.slug, position: String(category.position || 0) });
+    setFormData({
+      name: category.name,
+      nameAr: category.nameAr || '',
+      slug: category.slug,
+      position: String(category.position || 0),
+      image: category.image && uploadPathPattern.test(category.image) ? category.image : '',
+    });
     setEditingId(category.id);
     setShowForm(true);
   };
@@ -180,49 +212,84 @@ export default function CategoriesPage() {
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 bg-card border border-border rounded-2xl p-5">
           <h3 className="font-bold text-foreground mb-4">{editingId ? 'تعديل الصنف' : 'إضافة صنف جديد'}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">الاسم (إنجليزي) *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value, slug: generateSlug(e.target.value) })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                required
-              />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">الاسم (إنجليزي) *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value, slug: generateSlug(e.target.value) })}
+                  className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">الاسم (عربي)</label>
+                <input
+                  type="text"
+                  value={formData.nameAr}
+                  onChange={(e) => setFormData({ ...formData, nameAr: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Slug *</label>
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm font-mono"
+                  dir="ltr"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">الترتيب</label>
+                <input
+                  type="number"
+                  value={formData.position}
+                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                  min="0"
+                />
+              </div>
             </div>
+
+            {/* Image Upload */}
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">الاسم (عربي)</label>
-              <input
-                type="text"
-                value={formData.nameAr}
-                onChange={(e) => setFormData({ ...formData, nameAr: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Slug *</label>
-              <input
-                type="text"
-                value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm font-mono"
-                dir="ltr"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">الترتيب</label>
-              <input
-                type="number"
-                value={formData.position}
-                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                min="0"
-              />
+              <label className="block text-xs font-medium text-muted-foreground mb-1">صورة القسم (اختياري)</label>
+              <label className={`flex items-center gap-3 p-2.5 border rounded-xl cursor-pointer transition bg-background h-[104px] ${
+                formData.image ? 'border-border hover:border-primary/50' : 'border-2 border-dashed border-border hover:border-primary/50'
+              }`}>
+                {uploadingImage ? (
+                  <Loader2 size={18} className="animate-spin text-muted-foreground shrink-0" />
+                ) : formData.image ? (
+                  <img src={formData.image} alt="" className="w-12 h-12 rounded-lg object-contain bg-muted shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Upload size={18} className="text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  {formData.image ? (
+                    <p className="text-xs text-foreground truncate font-mono" dir="ltr">{formData.image.split('/').pop()}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">اضغط لرفع صورة القسم</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-0.5">JPEG, PNG, WEBP — حد أقصى 5MB</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={uploadingImage}
+                  onChange={(e) => handleImageUpload(e.target.files?.[0])}
+                />
+              </label>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-4">
+          <div className="flex items-center gap-2 mt-6">
             <button
               type="submit"
               disabled={submitting}
@@ -274,7 +341,18 @@ export default function CategoriesPage() {
               <tbody>
                 {categories.map((cat) => (
                   <tr key={cat.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition">
-                    <td className="px-4 py-3 font-medium text-foreground">{cat.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {cat.image ? (
+                          <img src={cat.image} alt={cat.name} className="w-8 h-8 rounded-lg object-contain bg-muted shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
+                            📁
+                          </div>
+                        )}
+                        <span className="font-medium text-foreground">{cat.name}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{cat.nameAr || '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground" dir="ltr">{cat.slug}</td>
                     <td className="px-4 py-3 text-center">

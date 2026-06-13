@@ -229,8 +229,19 @@ export default function Header() {
                       className="flex items-center justify-between px-4 py-2.5 hover:bg-primary/5 transition group"
                     >
                       <span className="flex items-center gap-2">
-                        <span className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-sm">
-                          {cat.image ? '📁' : '📁'}
+                        {cat.image ? (
+                          <img
+                            src={cat.image}
+                            alt={cat.name}
+                            className="w-8 h-8 rounded-lg object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <span className={`w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-sm ${cat.image ? 'hidden' : ''}`}>
+                          📁
                         </span>
                         <span className="text-foreground group-hover:text-primary transition text-sm">{cat.name}</span>
                       </span>
@@ -282,7 +293,18 @@ export default function Header() {
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/5 transition"
                 >
-                  <span className="w-9 h-9 rounded-lg bg-primary/5 flex items-center justify-center text-base">📁</span>
+                  {cat.image ? (
+                    <img
+                      src={cat.image}
+                      alt={cat.name}
+                      className="w-9 h-9 rounded-lg object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <span className={`w-9 h-9 rounded-lg bg-primary/5 flex items-center justify-center text-base ${cat.image ? 'hidden' : ''}`}>📁</span>
                   <span className="text-foreground text-sm">{cat.name}</span>
                 </Link>
               ))}
