@@ -72,6 +72,7 @@ export default function BranchesPage() {
   const [formData, setFormData] = useState({
     name: '', nameAr: '', address: '', addressAr: '', phone: '', isActive: true,
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   
   // Inventory State
@@ -127,8 +128,27 @@ export default function BranchesPage() {
     fetchBranches();
   }, [fetchBranches]);
 
+  const validateForm = () => {
+    const errs: Record<string, string> = {};
+    if (!formData.name.trim()) errs.name = 'اسم الفرع مطلوب';
+    else if (formData.name.trim().length < 2) errs.name = 'يجب أن يكون 2 أحرف على الأقل';
+
+    if (!formData.address.trim()) errs.address = 'العنوان مطلوب';
+    else if (formData.address.trim().length < 5) errs.address = 'يجب أن يكون 5 أحرف على الأقل';
+
+    if (!formData.phone.trim()) errs.phone = 'رقم الهاتف مطلوب';
+    else if (!/^07\d{9}$/.test(formData.phone.trim())) errs.phone = 'يجب أن يبدأ بـ 07 ويتكون من 11 رقم';
+
+    if (formData.nameAr.trim() && formData.nameAr.trim().length < 2) errs.nameAr = 'يجب أن يكون 2 أحرف على الأقل';
+    if (formData.addressAr.trim() && formData.addressAr.trim().length < 5) errs.addressAr = 'يجب أن يكون 5 أحرف على الأقل';
+
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const resetForm = () => {
     setFormData({ name: '', nameAr: '', address: '', addressAr: '', phone: '', isActive: true });
+    setFormErrors({});
     setShowForm(false);
     setEditingId(null);
   };
@@ -137,10 +157,7 @@ export default function BranchesPage() {
     e.preventDefault();
     if (!accessToken || submitting) return;
 
-    if (!formData.name.trim() || !formData.address.trim() || !formData.phone.trim()) {
-      alert('الرجاء تعبئة الحقول المطلوبة');
-      return;
-    }
+    if (!validateForm()) return;
 
     setSubmitting(true);
     try {
@@ -290,52 +307,54 @@ export default function BranchesPage() {
           <h3 className="font-bold text-foreground">{editingId ? 'تعديل بيانات الفرع' : 'إضافة فرع جديد'}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">اسم الفرع *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">اسم الفرع بالانكليزي *</label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                required
+                onChange={e => { setFormData({ ...formData, name: e.target.value }); if (formErrors.name) setFormErrors({ ...formErrors, name: '' }); }}
+                className={`w-full px-3 py-2 border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm ${formErrors.name ? 'border-red-500' : 'border-border'}`}
               />
+              {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">الاسم بالعربية</label>
               <input
                 type="text"
                 value={formData.nameAr}
-                onChange={e => setFormData({ ...formData, nameAr: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                onChange={e => { setFormData({ ...formData, nameAr: e.target.value }); if (formErrors.nameAr) setFormErrors({ ...formErrors, nameAr: '' }); }}
+                className={`w-full px-3 py-2 border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm ${formErrors.nameAr ? 'border-red-500' : 'border-border'}`}
               />
+              {formErrors.nameAr && <span className="text-red-500 text-xs mt-1">{formErrors.nameAr}</span>}
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">رقم الهاتف *</label>
               <input
                 type="text"
                 value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                required
+                onChange={e => { setFormData({ ...formData, phone: e.target.value }); if (formErrors.phone) setFormErrors({ ...formErrors, phone: '' }); }}
+                className={`w-full px-3 py-2 border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm ${formErrors.phone ? 'border-red-500' : 'border-border'}`}
               />
+              {formErrors.phone && <span className="text-red-500 text-xs mt-1">{formErrors.phone}</span>}
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-muted-foreground mb-1">العنوان بالتفصيل *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">العنوان بالانكليزي *</label>
               <input
                 type="text"
                 value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                required
+                onChange={e => { setFormData({ ...formData, address: e.target.value }); if (formErrors.address) setFormErrors({ ...formErrors, address: '' }); }}
+                className={`w-full px-3 py-2 border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm ${formErrors.address ? 'border-red-500' : 'border-border'}`}
               />
+              {formErrors.address && <span className="text-red-500 text-xs mt-1">{formErrors.address}</span>}
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">العنوان بالعربية</label>
               <input
                 type="text"
                 value={formData.addressAr}
-                onChange={e => setFormData({ ...formData, addressAr: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                onChange={e => { setFormData({ ...formData, addressAr: e.target.value }); if (formErrors.addressAr) setFormErrors({ ...formErrors, addressAr: '' }); }}
+                className={`w-full px-3 py-2 border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm ${formErrors.addressAr ? 'border-red-500' : 'border-border'}`}
               />
+              {formErrors.addressAr && <span className="text-red-500 text-xs mt-1">{formErrors.addressAr}</span>}
             </div>
             <div className="flex items-center gap-2 mt-4">
               <label className="flex items-center gap-2 cursor-pointer">

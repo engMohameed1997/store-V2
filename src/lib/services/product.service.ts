@@ -48,14 +48,20 @@ const PRODUCT_LIST_SELECT = {
 
 function generateSlug(name: string): string {
   let slug = name
+    .trim()
     .toLowerCase()
+    // Keep letters (including Arabic), numbers, spaces, and hyphens
     .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    // Replace spaces with hyphens
     .replace(/\s+/g, "-")
+    // Remove consecutive hyphens
     .replace(/-+/g, "-")
+    // Remove leading/trailing hyphens
     .replace(/^-|-$/g, "")
     .slice(0, 80);
 
-  if (!slug) {
+  // If slug is empty after cleaning, use a default
+  if (!slug || slug === "") {
     slug = "product";
   }
 

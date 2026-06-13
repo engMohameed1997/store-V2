@@ -11,6 +11,7 @@ const ORDER_INCLUDE = {
       product: { select: { id: true, name: true, slug: true, sku: true, images: { where: { isPrimary: true }, take: 1 } } },
     },
   },
+  user: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
   shippingAddress: true,
   tracking: { orderBy: { createdAt: "desc" as const } },
   coupon: { select: { code: true, discountType: true, discountValue: true } },

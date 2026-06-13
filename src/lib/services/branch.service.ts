@@ -76,37 +76,32 @@ export class BranchService {
     const branch = await db.branch.findUnique({ where: { id: branchId } });
     if (!branch) throw Errors.notFound("Branch");
 
-    // Upsert the branch stock
-    const uniqueConstraint = {
-      branchId_productId_variantId: {
-        branchId,
-        productId,
-        variantId: variantId || "",
-      },
-    };
-
-    // Prisma variantId is nullable, but we map it to empty string if null in unique constraint or keep it null.
-    // In schema.prisma: @@unique([branchId, productId, variantId])
-    // Note: in PostgreSQL unique constraints treat NULL as distinct. So to handle null, we should pass variantId: variantId or undefined.
-    // In Prisma:
-    await db.branchInventory.upsert({
+    // Find existing inventory record
+    const existing = await db.branchInventory.findFirst({
       where: {
-        branchId_productId_variantId: {
-          branchId,
-          productId,
-          variantId: variantId || null,
-        },
-      },
-      create: {
         branchId,
         productId,
-        variantId: variantId || null,
-        stock,
-      },
-      update: {
-        stock,
+        variantId,
       },
     });
+
+    if (existing) {
+      // Update existing
+      await db.branchInventory.update({
+        where: { id: existing.id },
+        data: { stock },
+      });
+    } else {
+      // Create new
+      await db.branchInventory.create({
+        data: {
+          branchId,
+          productId,
+          variantId,
+          stock,
+        },
+      });
+    }
 
     // Re-calculate and update total stock on the Product or ProductVariant
     if (variantId) {
