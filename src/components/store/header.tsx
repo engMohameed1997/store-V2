@@ -29,7 +29,7 @@ export default function Header() {
       .then(data => {
         if (data.success) setCategories(data.data);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Scroll detection for header shadow
@@ -207,7 +207,7 @@ export default function Header() {
       {/* Navigation Bar - Desktop */}
       <nav className="bg-card border-b border-border hidden md:block">
         <div className="container mx-auto px-4">
-          <div className="flex items-center gap-1 h-11 text-sm">
+          <div className="flex items-center justify-center gap-1 h-11 text-sm">
             {/* All Categories Dropdown */}
             <div className="relative" ref={megaRef}>
               <button
