@@ -383,9 +383,15 @@ export default function OrderDetailPage() {
                 <span className="text-xs text-muted-foreground">الاسم</span>
                 <p className="font-medium text-foreground mt-0.5">{order.user.firstName} {order.user.lastName}</p>
               </div>
+              {order.user.phone && (
+                <div>
+                  <span className="text-xs text-muted-foreground">رقم الهاتف</span>
+                  <p className="font-medium text-foreground mt-0.5" dir="ltr">{order.user.phone}</p>
+                </div>
+              )}
               {order.user.email && (
                 <div>
-                  <span className="text-xs text-muted-foreground">البريد</span>
+                  <span className="text-xs text-muted-foreground">البريد الالكتروني</span>
                   <p className="font-medium text-foreground mt-0.5" dir="ltr">{order.user.email}</p>
                 </div>
               )}
@@ -396,47 +402,47 @@ export default function OrderDetailPage() {
         </section>
 
         {/* Shipping Address */}
-        {order.address && (
+        {(order.shippingAddress || order.address) && (
           <section className="bg-card border border-border rounded-2xl p-5">
             <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
               <MapPin size={18} className="text-primary" />
               عنوان الشحن
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              {order.address.street && (
+              {(order.shippingAddress?.street || order.address?.street) && (
                 <div>
                   <span className="text-xs text-muted-foreground">الشارع</span>
-                  <p className="font-medium text-foreground mt-0.5">{order.address.street}</p>
+                  <p className="font-medium text-foreground mt-0.5">{order.shippingAddress?.street || order.address?.street}</p>
                 </div>
               )}
-              {order.address.city && (
+              {(order.shippingAddress?.city || order.address?.city) && (
                 <div>
                   <span className="text-xs text-muted-foreground">المدينة</span>
-                  <p className="font-medium text-foreground mt-0.5">{order.address.city}</p>
+                  <p className="font-medium text-foreground mt-0.5">{order.shippingAddress?.city || order.address?.city}</p>
                 </div>
               )}
-              {order.address.state && (
+              {(order.shippingAddress?.state || order.address?.state) && (
                 <div>
                   <span className="text-xs text-muted-foreground">المنطقة</span>
-                  <p className="font-medium text-foreground mt-0.5">{order.address.state}</p>
+                  <p className="font-medium text-foreground mt-0.5">{order.shippingAddress?.state || order.address?.state}</p>
                 </div>
               )}
-              {order.address.country && (
+              {(order.shippingAddress?.country || order.address?.country) && (
                 <div>
                   <span className="text-xs text-muted-foreground">الدولة</span>
-                  <p className="font-medium text-foreground mt-0.5">{order.address.country}</p>
+                  <p className="font-medium text-foreground mt-0.5">{order.shippingAddress?.country || order.address?.country}</p>
                 </div>
               )}
-              {order.address.postalCode && (
+              {(order.shippingAddress?.postalCode || order.address?.postalCode) && (
                 <div>
                   <span className="text-xs text-muted-foreground">الرمز البريدي</span>
-                  <p className="font-medium text-foreground mt-0.5" dir="ltr">{order.address.postalCode}</p>
+                  <p className="font-medium text-foreground mt-0.5" dir="ltr">{order.shippingAddress?.postalCode || order.address?.postalCode}</p>
                 </div>
               )}
-              {order.address.phone && (
+              {(order.shippingAddress?.phone || order.address?.phone) && (
                 <div>
-                  <span className="text-xs text-muted-foreground">الهاتف</span>
-                  <p className="font-medium text-foreground mt-0.5" dir="ltr">{order.address.phone}</p>
+                  <span className="text-xs text-muted-foreground">هاتف الشحن / الاتصال</span>
+                  <p className="font-medium text-foreground mt-0.5" dir="ltr">{order.shippingAddress?.phone || order.address?.phone}</p>
                 </div>
               )}
             </div>

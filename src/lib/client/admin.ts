@@ -220,11 +220,13 @@ export interface AdminCoupon {
   id: string;
   code: string;
   description?: string;
-  type: string;
-  value: number;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING';
+  discountValue: number;
+  scope: 'ALL' | 'SPECIFIC_PRODUCTS' | 'SPECIFIC_CATEGORIES';
   minOrderAmount?: number;
   maxDiscount?: number;
   usageLimit?: number;
+  perUserLimit: number;
   usageCount: number;
   isActive: boolean;
   startsAt?: string;
@@ -235,11 +237,13 @@ export interface AdminCoupon {
 export interface CreateCouponInput {
   code: string;
   description?: string;
-  type: string;
-  value: number;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING';
+  discountValue: number;
+  scope?: 'ALL' | 'SPECIFIC_PRODUCTS' | 'SPECIFIC_CATEGORIES';
   minOrderAmount?: number;
   maxDiscount?: number;
   usageLimit?: number;
+  perUserLimit?: number;
   isActive?: boolean;
   startsAt?: string;
   expiresAt?: string;

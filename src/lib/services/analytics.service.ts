@@ -12,8 +12,13 @@ export class AnalyticsService {
     }
 
     const now = new Date();
+    
+    // To handle timezone of Iraq (UTC+3) correctly, set hours to -3 UTC for start of today
+    const todayStart = new Date(now);
+    todayStart.setUTCHours(-3, 0, 0, 0);
+
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const [
       totalUsers,
@@ -21,10 +26,12 @@ export class AnalyticsService {
       totalCustomers,
       totalOrders,
       ordersThisMonth,
+      ordersWeekly,
       ordersToday,
       pendingOrders,
       revenue,
       revenueThisMonth,
+      revenueWeekly,
       revenueToday,
       totalProducts,
       lowStockProducts,
@@ -35,18 +42,23 @@ export class AnalyticsService {
       db.user.count({ where: { role: "CUSTOMER", deletedAt: null } }),
       db.order.count(),
       db.order.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      db.order.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
       db.order.count({ where: { createdAt: { gte: todayStart } } }),
       db.order.count({ where: { status: "PENDING" } }),
       db.order.aggregate({
-        where: { paymentStatus: "PAID" },
+        where: { status: { notIn: ["CANCELLED", "REFUNDED"] } },
         _sum: { totalAmount: true },
       }),
       db.order.aggregate({
-        where: { paymentStatus: "PAID", createdAt: { gte: thirtyDaysAgo } },
+        where: { status: { notIn: ["CANCELLED", "REFUNDED"] }, createdAt: { gte: thirtyDaysAgo } },
         _sum: { totalAmount: true },
       }),
       db.order.aggregate({
-        where: { paymentStatus: "PAID", createdAt: { gte: todayStart } },
+        where: { status: { notIn: ["CANCELLED", "REFUNDED"] }, createdAt: { gte: sevenDaysAgo } },
+        _sum: { totalAmount: true },
+      }),
+      db.order.aggregate({
+        where: { status: { notIn: ["CANCELLED", "REFUNDED"] }, createdAt: { gte: todayStart } },
         _sum: { totalAmount: true },
       }),
       db.product.count({ where: { deletedAt: null, isActive: true } }),
@@ -66,11 +78,12 @@ export class AnalyticsService {
 
     const result: DashboardData = {
       users: { total: totalUsers, newThisMonth: newUsersThisMonth, totalCustomers },
-      orders: { total: totalOrders, thisMonth: ordersThisMonth, today: ordersToday, pending: pendingOrders },
+      orders: { total: totalOrders, thisMonth: ordersThisMonth, weekly: ordersWeekly, today: ordersToday, pending: pendingOrders },
       revenue: {
-        total: Number(revenue._sum.totalAmount || 0),
-        thisMonth: Number(revenueThisMonth._sum.totalAmount || 0),
-        today: Number(revenueToday._sum.totalAmount || 0),
+        total: Number(revenue?._sum?.totalAmount || 0),
+        thisMonth: Number(revenueThisMonth?._sum?.totalAmount || 0),
+        weekly: Number(revenueWeekly?._sum?.totalAmount || 0),
+        today: Number(revenueToday?._sum?.totalAmount || 0),
       },
       products: {
         total: totalProducts,
@@ -97,7 +110,12 @@ export class AnalyticsService {
       topCategories,
       mostViewedProducts,
       topWishlisted,
-      popularSearches
+      popularSearches,
+      totalOrdersAll,
+      completedOrders,
+      cancelledOrders,
+      wishlistCount,
+      cartItemCount,
     ] = await Promise.all([
       // Top selling products
       db.product.findMany({
@@ -164,7 +182,57 @@ export class AnalyticsService {
         },
         take: 10,
       }),
+      // Order completion rate
+      db.order.count(),
+      db.order.count({ where: { status: "DELIVERED" } }),
+      db.order.count({ where: { status: "CANCELLED" } }),
+      // Wishlist vs Cart counts
+      db.wishlistItem.count(),
+      db.cartItem.count(),
     ]);
+
+    // VIP customers: top 10 by total revenue
+    const vipCustomers = await db.order.groupBy({
+      by: ["userId"],
+      where: { status: { notIn: ["CANCELLED", "REFUNDED"] } },
+      _sum: { totalAmount: true },
+      _count: { id: true },
+      orderBy: { _sum: { totalAmount: "desc" } },
+      take: 10,
+    });
+
+    const vipUserIds = vipCustomers.map((v) => v.userId);
+    const vipUsers = vipUserIds.length
+      ? await db.user.findMany({
+          where: { id: { in: vipUserIds } },
+          select: { id: true, firstName: true, lastName: true, phone: true },
+        })
+      : [];
+    const vipMap = new Map(vipUsers.map((u) => [u.id, u]));
+
+    // Wishlist-to-cart conversion: products in wishlist that are also in carts
+    const wishlistProducts = await db.wishlistItem.groupBy({
+      by: ["productId"],
+      _count: { productId: true },
+      orderBy: { _count: { productId: "desc" } },
+      take: 20,
+    });
+    const wishlistProductIds = wishlistProducts.map((w) => w.productId);
+    const inCartCounts = wishlistProductIds.length
+      ? await db.cartItem.groupBy({
+          by: ["productId"],
+          where: { productId: { in: wishlistProductIds } },
+          _count: { productId: true },
+        })
+      : [];
+    const cartMap = new Map(inCartCounts.map((c) => [c.productId, c._count.productId]));
+    const wishlistProductDetails = wishlistProductIds.length
+      ? await db.product.findMany({
+          where: { id: { in: wishlistProductIds } },
+          select: { id: true, name: true, nameAr: true },
+        })
+      : [];
+    const prodMap = new Map(wishlistProductDetails.map((p) => [p.id, p]));
 
     const result: ReportsData = {
       topProducts,
@@ -191,6 +259,35 @@ export class AnalyticsService {
         query: s.query,
         count: s._count.query,
       })),
+      orderCompletionRate: {
+        total: totalOrdersAll,
+        completed: completedOrders,
+        cancelled: cancelledOrders,
+        rate: totalOrdersAll > 0 ? Math.round((completedOrders / totalOrdersAll) * 100) : 0,
+      },
+      vipCustomers: vipCustomers.map((v) => {
+        const u = vipMap.get(v.userId);
+        return {
+          id: v.userId,
+          name: u ? `${u.firstName} ${u.lastName}` : "زبون",
+          phone: u?.phone || null,
+          orderCount: v._count.id,
+          totalRevenue: Number(v._sum.totalAmount || 0),
+        };
+      }),
+      wishlistVsCart: {
+        totalWishlist: wishlistCount,
+        totalCart: cartItemCount,
+        products: wishlistProducts.slice(0, 10).map((w) => {
+          const p = prodMap.get(w.productId);
+          return {
+            id: w.productId,
+            name: p?.nameAr || p?.name || "",
+            wishlistCount: w._count.productId,
+            cartCount: cartMap.get(w.productId) || 0,
+          };
+        }),
+      },
     };
 
     cache.set(REPORTS_CACHE_KEY, result, CACHE_TTL.ANALYTICS_DASHBOARD);
@@ -205,8 +302,8 @@ export class AnalyticsService {
 
 interface DashboardData {
   users: { total: number; newThisMonth: number; totalCustomers: number };
-  orders: { total: number; thisMonth: number; today: number; pending: number };
-  revenue: { total: number; thisMonth: number; today: number };
+  orders: { total: number; thisMonth: number; weekly: number; today: number; pending: number };
+  revenue: { total: number; thisMonth: number; weekly: number; today: number };
   products: { total: number; lowStock: number; outOfStock: number };
   recentOrders: unknown[];
 }
@@ -218,4 +315,11 @@ interface ReportsData {
   mostViewedProducts: { id: string; name: string; nameAr: string | null; viewCount: number; soldCount: number }[];
   topWishlisted: { id: string; name: string; nameAr: string | null; price: number; wishlistCount: number }[];
   popularSearches: { query: string; count: number }[];
+  orderCompletionRate: { total: number; completed: number; cancelled: number; rate: number };
+  vipCustomers: { id: string; name: string; phone: string | null; orderCount: number; totalRevenue: number }[];
+  wishlistVsCart: {
+    totalWishlist: number;
+    totalCart: number;
+    products: { id: string; name: string; wishlistCount: number; cartCount: number }[];
+  };
 }

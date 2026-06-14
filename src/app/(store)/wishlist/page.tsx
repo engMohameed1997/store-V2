@@ -153,7 +153,7 @@ export default function WishlistPage() {
                   className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-primary/90 transition disabled:opacity-50"
                 >
                   <ShoppingCart size={14} />
-                  {item.product.stock === 0 ? 'نفد' : 'أضف للسلة'}
+                  {item.product.stock === 0 ? 'نفذ' : 'أضف للسلة'}
                 </button>
                 <button
                   onClick={() => removeFromWishlist(item.product.id)}

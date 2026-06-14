@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleApiError } from "./error-handler";
 import { checkRateLimit } from "./rate-limiter";
-import { AuthUser, requireAuth, requireAdmin, requireSuperAdmin } from "./auth-guard";
+import { AuthUser, requireAuth, requireAdmin, requireSuperAdmin, requireRole } from "./auth-guard";
+import type { UserRole } from "@/generated/prisma/client";
 
 type RateLimitTier = "default" | "auth" | "strict" | "search" | "upload";
 
@@ -10,6 +11,7 @@ interface RouteOptions {
   auth?: boolean;
   admin?: boolean;
   superAdmin?: boolean;
+  roles?: UserRole[];
 }
 
 type RouteContext = {
@@ -34,6 +36,8 @@ export function createHandler(handler: HandlerFn, options: RouteOptions = {}) {
 
       if (options.superAdmin) {
         user = await requireSuperAdmin(request);
+      } else if (options.roles && options.roles.length > 0) {
+        user = await requireRole(request, ...options.roles);
       } else if (options.admin) {
         user = await requireAdmin(request);
       } else if (options.auth) {
@@ -58,3 +62,15 @@ export const adminRoute = (handler: HandlerFn, rateLimit?: RateLimitTier) =>
 
 export const superAdminRoute = (handler: HandlerFn, rateLimit?: RateLimitTier) =>
   createHandler(handler, { superAdmin: true, rateLimit });
+
+export const staffRoute = (roles: UserRole[], handler: HandlerFn, rateLimit?: RateLimitTier) =>
+  createHandler(handler, { roles, rateLimit });
+
+export const salesRoute = (handler: HandlerFn, rateLimit?: RateLimitTier) =>
+  staffRoute(["ADMIN", "SUPER_ADMIN", "SALES"], handler, rateLimit);
+
+export const warehouseRoute = (handler: HandlerFn, rateLimit?: RateLimitTier) =>
+  staffRoute(["ADMIN", "SUPER_ADMIN", "WAREHOUSE"], handler, rateLimit);
+
+export const customerServiceRoute = (handler: HandlerFn, rateLimit?: RateLimitTier) =>
+  staffRoute(["ADMIN", "SUPER_ADMIN", "CUSTOMER_SERVICE"], handler, rateLimit);

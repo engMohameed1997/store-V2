@@ -28,7 +28,7 @@ export default function CouponsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    code: '', type: 'PERCENTAGE', value: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', expiresAt: '',
+    code: '', discountType: 'PERCENTAGE', discountValue: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', expiresAt: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export default function CouponsPage() {
   }, [fetchCoupons]);
 
   const resetForm = () => {
-    setFormData({ code: '', type: 'PERCENTAGE', value: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', expiresAt: '' });
+    setFormData({ code: '', discountType: 'PERCENTAGE', discountValue: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', expiresAt: '' });
     setShowForm(false);
     setEditingId(null);
   };
@@ -68,10 +68,14 @@ export default function CouponsPage() {
     if (!client || submitting) return;
 
     const code = formData.code.trim().toUpperCase();
-    const value = Number(formData.value);
+    const discountValue = Number(formData.discountValue);
 
-    if (!code || !value || value <= 0) {
-      alert('كود الخصم والقيمة مطلوبين');
+    if (!code) {
+      alert('كود الخصم مطلوب');
+      return;
+    }
+    if (formData.discountType !== 'FREE_SHIPPING' && (!discountValue || discountValue <= 0)) {
+      alert('قيمة الخصم مطلوبة ويجب أن تكون أكبر من صفر');
       return;
     }
 
@@ -79,8 +83,8 @@ export default function CouponsPage() {
     try {
       const payload: CreateCouponInput = {
         code,
-        type: formData.type,
-        value,
+        discountType: formData.discountType as CreateCouponInput['discountType'],
+        discountValue: formData.discountType === 'FREE_SHIPPING' ? 0 : discountValue,
         minOrderAmount: formData.minOrderAmount ? Number(formData.minOrderAmount) : undefined,
         maxDiscount: formData.maxDiscount ? Number(formData.maxDiscount) : undefined,
         usageLimit: formData.usageLimit ? Number(formData.usageLimit) : undefined,
@@ -114,8 +118,8 @@ export default function CouponsPage() {
   const handleEdit = (coupon: AdminCoupon) => {
     setFormData({
       code: coupon.code,
-      type: coupon.type,
-      value: String(coupon.value),
+      discountType: coupon.discountType,
+      discountValue: String(coupon.discountValue),
       minOrderAmount: coupon.minOrderAmount ? String(coupon.minOrderAmount) : '',
       maxDiscount: coupon.maxDiscount ? String(coupon.maxDiscount) : '',
       usageLimit: coupon.usageLimit ? String(coupon.usageLimit) : '',
@@ -193,24 +197,26 @@ export default function CouponsPage() {
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">النوع *</label>
               <select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                value={formData.discountType}
+                onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
                 className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
               >
                 <option value="PERCENTAGE">نسبة مئوية %</option>
-                <option value="FIXED">مبلغ ثابت</option>
+                <option value="FIXED_AMOUNT">مبلغ ثابت</option>
+                <option value="FREE_SHIPPING">شحن مجاني</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">القيمة *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">القيمة {formData.discountType !== 'FREE_SHIPPING' ? '*' : ''}</label>
               <input
                 type="number"
-                value={formData.value}
-                onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                value={formData.discountValue}
+                onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm disabled:opacity-50"
                 min="0"
                 step="0.01"
-                required
+                disabled={formData.discountType === 'FREE_SHIPPING'}
+                required={formData.discountType !== 'FREE_SHIPPING'}
               />
             </div>
             <div>
@@ -308,10 +314,10 @@ export default function CouponsPage() {
                     <tr key={coupon.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition">
                       <td className="px-4 py-3 font-mono font-bold text-foreground">{coupon.code}</td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {coupon.type === 'PERCENTAGE' ? 'نسبة %' : 'مبلغ ثابت'}
+                        {coupon.discountType === 'PERCENTAGE' ? 'نسبة %' : coupon.discountType === 'FIXED_AMOUNT' ? 'مبلغ ثابت' : 'شحن مجاني'}
                       </td>
                       <td className="px-4 py-3 font-medium text-foreground">
-                        {coupon.value}{coupon.type === 'PERCENTAGE' ? '%' : ' د.ع'}
+                        {coupon.discountType === 'FREE_SHIPPING' ? '—' : `${coupon.discountValue}${coupon.discountType === 'PERCENTAGE' ? '%' : ' د.ع'}`}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {coupon.usageCount}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ''}

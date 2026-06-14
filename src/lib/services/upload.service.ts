@@ -5,12 +5,14 @@ import crypto from "crypto";
 import { Errors } from "@/lib/api/errors";
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
+export const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB per video
 export const MAX_FILES_PER_REQUEST = 10;
 const MAX_IMAGE_DIMENSION = 8000; // pixels — prevents decompression bombs
 
 const UPLOAD_BASE_DIR = path.join(process.cwd(), "public", "uploads");
 
 type AllowedMime = "image/jpeg" | "image/png" | "image/webp";
+type AllowedVideoMime = "video/mp4" | "video/webm";
 
 // ── Magic Bytes Signatures ────────────────────────────────────────────────────
 // Validates real file type from binary content — immune to extension/MIME spoofing
@@ -38,6 +40,27 @@ function detectMimeFromBytes(buffer: Buffer): AllowedMime | null {
     buffer[10] === 0x42 && buffer[11] === 0x50
   ) {
     return "image/webp";
+  }
+
+  return null;
+}
+
+function detectVideoMimeFromBytes(buffer: Buffer): AllowedVideoMime | null {
+  if (buffer.length < 12) return null;
+
+  // MP4: has "ftyp" at offset 4
+  if (
+    buffer[4] === 0x66 && buffer[5] === 0x74 &&
+    buffer[6] === 0x79 && buffer[7] === 0x70
+  ) {
+    return "video/mp4";
+  }
+  // WebM: starts with EBML header 0x1A 0x45 0xDF 0xA3
+  if (
+    buffer[0] === 0x1a && buffer[1] === 0x45 &&
+    buffer[2] === 0xdf && buffer[3] === 0xa3
+  ) {
+    return "video/webm";
   }
 
   return null;
@@ -135,5 +158,38 @@ export class UploadService {
     );
 
     return { url, filename, size: processedBuffer.length, mimeType: outputMime, width, height };
+  }
+
+  static async processAndSaveVideo(
+    buffer: Buffer,
+    folder: string,
+    uploadedBy?: string
+  ): Promise<UploadResult> {
+    const byTag = uploadedBy || "unknown";
+
+    const detectedMime = detectVideoMimeFromBytes(buffer);
+    if (!detectedMime) {
+      console.warn(`[Upload] REJECTED invalid video type | by=${byTag}`);
+      throw Errors.badRequest("Invalid file: only MP4 and WebM videos are accepted");
+    }
+
+    const outputExt = detectedMime === "video/mp4" ? "mp4" : "webm";
+
+    const sanitizedFolder = folder.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 50) || "general";
+    const folderPath = path.join(UPLOAD_BASE_DIR, sanitizedFolder);
+    await fs.mkdir(folderPath, { recursive: true });
+
+    const filename = `${crypto.randomUUID()}.${outputExt}`;
+    const filePath = path.join(folderPath, filename);
+
+    await fs.writeFile(filePath, buffer, { flag: "wx" });
+
+    const url = `/uploads/${sanitizedFolder}/${filename}`;
+
+    console.info(
+      `[Upload] Video saved: ${url} | ${buffer.length}B | mime=${detectedMime} | by=${byTag}`
+    );
+
+    return { url, filename, size: buffer.length, mimeType: detectedMime, width: 0, height: 0 };
   }
 }

@@ -96,7 +96,7 @@ export default function ProductCard({ product }: Props) {
           )}
           {product.stock === 0 && (
             <span className="bg-gray-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
-              نفد
+              نفذ
             </span>
           )}
         </div>

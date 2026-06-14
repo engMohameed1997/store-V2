@@ -4,6 +4,7 @@ import type { CreateOrderInput, CancelOrderInput, UpdateOrderStatusInput } from 
 import { MAX_PAGINATION_LIMIT } from "@/lib/constants/pagination";
 import crypto from "crypto";
 import { WarrantyService } from "./warranty.service";
+import { TelegramService } from "./telegram.service";
 
 const ORDER_INCLUDE = {
   items: {
@@ -357,6 +358,21 @@ export class OrderService {
 
       return newOrder;
     });
+
+    // Fire-and-forget Telegram notification
+    try {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true, phone: true },
+      });
+      TelegramService.notifyNewOrder({
+        orderNumber: order.orderNumber,
+        totalAmount: order.totalAmount,
+        customerName: user ? `${user.firstName} ${user.lastName}` : "زبون",
+        customerPhone: user?.phone,
+        itemCount: order.items?.length || 0,
+      }).catch(() => {});
+    } catch {}
 
     return order;
   }

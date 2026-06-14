@@ -14,13 +14,21 @@ import {
   Shield,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
+import { useAuth } from '@/components/providers/auth-provider';
 import type { AdminUser, AdminUpdateUserInput } from '@/lib/client/admin';
 
-const ROLE_FILTERS = [
+const CUSTOMER_ROLE_FILTERS = [
   { value: '', label: 'كل الأدوار' },
-  { value: 'USER', label: 'مستخدم' },
+  { value: 'CUSTOMER', label: 'زبون' },
+];
+
+const STAFF_ROLE_FILTERS = [
+  { value: '', label: 'كل الأدوار' },
   { value: 'ADMIN', label: 'أدمن' },
-  { value: 'SUPER_ADMIN', label: 'سوبر أدمن' },
+  { value: 'SUPER_ADMIN', label: 'مدير النظام' },
+  { value: 'SALES', label: 'موظف مبيعات' },
+  { value: 'WAREHOUSE', label: 'موظف مخزن' },
+  { value: 'CUSTOMER_SERVICE', label: 'خدمة عملاء' },
 ];
 
 const STATUS_FILTERS = [
@@ -46,13 +54,30 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  USER: 'مستخدم',
+  CUSTOMER: 'زبون',
   ADMIN: 'أدمن',
-  SUPER_ADMIN: 'سوبر أدمن',
+  SUPER_ADMIN: 'مدير النظام',
+  SALES: 'موظف مبيعات',
+  WAREHOUSE: 'موظف مخزن',
+  CUSTOMER_SERVICE: 'خدمة عملاء',
 };
+
+const STAFF_ROLES = ['ADMIN', 'SUPER_ADMIN', 'SALES', 'WAREHOUSE', 'CUSTOMER_SERVICE'];
+
+const ASSIGNABLE_ROLES = [
+  { value: 'SALES', label: 'موظف مبيعات' },
+  { value: 'WAREHOUSE', label: 'موظف مخزن' },
+  { value: 'CUSTOMER_SERVICE', label: 'خدمة عملاء' },
+  { value: 'ADMIN', label: 'أدمن' },
+];
+
+type TabType = 'customers' | 'staff';
 
 export default function UsersPage() {
   const client = useAdminClient();
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const [tab, setTab] = useState<TabType>('customers');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -69,11 +94,13 @@ export default function UsersPage() {
     setError('');
 
     try {
+      // For staff tab, filter by staff roles; for customers, filter by CUSTOMER
+      const effectiveRole = roleFilter || (tab === 'staff' ? 'ADMIN,SUPER_ADMIN,SALES,WAREHOUSE,CUSTOMER_SERVICE' : 'CUSTOMER');
       const result = await client.users.list({
         page,
         limit: 20,
         search: search || undefined,
-        role: roleFilter || undefined,
+        role: effectiveRole,
         status: statusFilter || undefined,
       });
       if (result.success) {
@@ -88,11 +115,37 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [client, page, search, roleFilter, statusFilter]);
+  }, [client, page, search, roleFilter, statusFilter, tab]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // Reset page when switching tabs
+  const switchTab = (newTab: TabType) => {
+    setTab(newTab);
+    setPage(1);
+    setRoleFilter('');
+    setSearch('');
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    if (!client || actionId) return;
+    setActionId(userId);
+    try {
+      const input: AdminUpdateUserInput = { role: newRole };
+      const result = await client.users.update(userId, input);
+      if (result.success) {
+        setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+      } else if (!result.success) {
+        alert(result.error.message);
+      }
+    } catch {
+      alert('فشل في تغيير دور المستخدم');
+    } finally {
+      setActionId(null);
+    }
+  };
 
   const handleStatusChange = async (userId: string, newStatus: string) => {
     if (!client || actionId) return;
@@ -130,12 +183,41 @@ export default function UsersPage() {
     }
   };
 
+  const roleFilters = tab === 'staff' ? STAFF_ROLE_FILTERS : CUSTOMER_ROLE_FILTERS;
+
   return (
     <div>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Users size={24} className="text-primary" />
         <h1 className="text-2xl font-bold text-foreground">المستخدمين</h1>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-muted p-1 rounded-xl w-fit">
+        <button
+          onClick={() => switchTab('customers')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+            tab === 'customers'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          الزبائن
+        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => switchTab('staff')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+              tab === 'staff'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Shield size={14} />
+            الموظفين
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -156,7 +238,7 @@ export default function UsersPage() {
           onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
           className="appearance-none px-4 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm cursor-pointer"
         >
-          {ROLE_FILTERS.map((r) => (
+          {roleFilters.map((r) => (
             <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </select>
@@ -221,10 +303,23 @@ export default function UsersPage() {
                         {user.phone && <div dir="ltr">{user.phone}</div>}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground">
-                          {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && <Shield size={12} className="text-primary" />}
-                          {ROLE_LABELS[user.role] || user.role}
-                        </span>
+                        {tab === 'staff' && isSuperAdmin && user.id !== currentUser?.id ? (
+                          <select
+                            value={user.role}
+                            onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                            disabled={actionId === user.id}
+                            className="appearance-none px-2 py-1 rounded-lg text-xs font-medium border border-border bg-background text-foreground outline-none cursor-pointer disabled:opacity-50"
+                          >
+                            {ASSIGNABLE_ROLES.map((r) => (
+                              <option key={r.value} value={r.value}>{r.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground">
+                            {STAFF_ROLES.includes(user.role) && <Shield size={12} className="text-primary" />}
+                            {ROLE_LABELS[user.role] || user.role}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <select

@@ -50,7 +50,10 @@ export class UserService {
 
     const where: Record<string, unknown> = { deletedAt: null };
 
-    if (filters.role) where.role = filters.role;
+    if (filters.role) {
+      const roles = filters.role.split(",").map((r) => r.trim()).filter(Boolean);
+      where.role = roles.length === 1 ? roles[0] : { in: roles };
+    }
     if (filters.status) where.status = filters.status;
     if (filters.search) {
       where.OR = [

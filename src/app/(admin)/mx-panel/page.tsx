@@ -22,8 +22,8 @@ const ADMIN_BASE = '/api/v1/mx-panel';
 
 interface DashboardData {
   users: { total: number; newThisMonth: number; totalCustomers: number };
-  orders: { total: number; thisMonth: number; today: number; pending: number };
-  revenue: { total: number; thisMonth: number; today: number };
+  orders: { total: number; thisMonth: number; weekly: number; today: number; pending: number };
+  revenue: { total: number; thisMonth: number; weekly: number; today: number };
   products: { total: number; lowStock: number; outOfStock: number };
   recentOrders: any[];
 }
@@ -173,7 +173,10 @@ export default function DashboardPage() {
       {data && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Card 1: Today Sales */}
-          <div className="bg-card border border-border rounded-2xl p-5 hover:shadow-md transition">
+          <Link
+            href="/mx-panel/orders"
+            className="bg-card border border-border rounded-2xl p-5 hover:shadow-md hover:border-primary/50 transition block cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-muted-foreground uppercase">مبيعات اليوم</span>
               <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
@@ -183,13 +186,16 @@ export default function DashboardPage() {
             <p className="text-xl font-black text-foreground">
               {formatPrice(data.revenue.today)} <span className="text-xs font-normal text-muted-foreground">د.ع</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              مبيعات هذا الشهر: {formatPrice(data.revenue.thisMonth)} د.ع
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              الأسبوع: {formatPrice(data.revenue.weekly)} د.ع • الشهر: {formatPrice(data.revenue.thisMonth)} د.ع
             </p>
-          </div>
+          </Link>
 
           {/* Card 2: Today Orders */}
-          <div className="bg-card border border-border rounded-2xl p-5 hover:shadow-md transition">
+          <Link
+            href="/mx-panel/orders"
+            className="bg-card border border-border rounded-2xl p-5 hover:shadow-md hover:border-primary/50 transition block cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-muted-foreground uppercase">طلبات اليوم</span>
               <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
@@ -200,13 +206,16 @@ export default function DashboardPage() {
               {data.orders.today.toLocaleString('ar-IQ')}{' '}
               <span className="text-xs font-normal text-muted-foreground">طلبات</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              بانتظار التأكيد: {data.orders.pending.toLocaleString('ar-IQ')} طلبات
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              الأسبوع: {data.orders.weekly.toLocaleString('ar-IQ')} • الانتظار: {data.orders.pending.toLocaleString('ar-IQ')}
             </p>
-          </div>
+          </Link>
 
           {/* Card 3: Customers */}
-          <div className="bg-card border border-border rounded-2xl p-5 hover:shadow-md transition">
+          <Link
+            href="/mx-panel/users"
+            className="bg-card border border-border rounded-2xl p-5 hover:shadow-md hover:border-primary/50 transition block cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-muted-foreground uppercase">عدد العملاء</span>
               <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
@@ -217,13 +226,16 @@ export default function DashboardPage() {
               {data.users.totalCustomers.toLocaleString('ar-IQ')}{' '}
               <span className="text-xs font-normal text-muted-foreground">عميل</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-1.5">
+            <p className="text-[11px] text-muted-foreground mt-1.5">
               الجدد هذا الشهر: +{data.users.newThisMonth.toLocaleString('ar-IQ')}
             </p>
-          </div>
+          </Link>
 
           {/* Card 4: Inventory Alerts */}
-          <div className="bg-card border border-border rounded-2xl p-5 hover:shadow-md transition">
+          <Link
+            href="/mx-panel/products"
+            className="bg-card border border-border rounded-2xl p-5 hover:shadow-md hover:border-primary/50 transition block cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-muted-foreground uppercase">حالة المخزون</span>
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
@@ -236,10 +248,10 @@ export default function DashboardPage() {
               {data.products.lowStock.toLocaleString('ar-IQ')}{' '}
               <span className="text-xs font-normal text-muted-foreground">منتجات منخفضة</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-1.5">
+            <p className="text-[11px] text-muted-foreground mt-1.5">
               المنتجات الكلية: {data.products.total.toLocaleString('ar-IQ')}
             </p>
-          </div>
+          </Link>
         </div>
       )}
 
@@ -318,7 +330,7 @@ export default function DashboardPage() {
                         ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400'
                         : 'bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
                     }`}>
-                      {p.stock === 0 ? 'نفد تماماً' : `المتبقي: ${p.stock}`}
+                      {p.stock === 0 ? 'نفذ تماماً' : `المتبقي: ${p.stock}`}
                     </span>
                   </div>
                 ))}

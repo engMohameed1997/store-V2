@@ -11,6 +11,10 @@ import {
   Phone,
   Globe,
   FileText,
+  Bot,
+  Search,
+  X,
+  Plus,
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson, putJson } from '@/lib/client/api';
@@ -39,6 +43,11 @@ export default function SettingsPage() {
   const [termsAndConditions, setTermsAndConditions] = useState('');
   const [privacyPolicy, setPrivacyPolicy] = useState('');
   const [returnPolicy, setReturnPolicy] = useState('');
+  const [telegramBotToken, setTelegramBotToken] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
+  const [whatsappGreeting, setWhatsappGreeting] = useState('');
+  const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
+  const [newKeyword, setNewKeyword] = useState('');
 
   const opts = { token: accessToken! };
 
@@ -64,6 +73,13 @@ export default function SettingsPage() {
         setTermsAndConditions(d.termsAndConditions || '');
         setPrivacyPolicy(d.privacyPolicy || '');
         setReturnPolicy(d.returnPolicy || '');
+        setTelegramBotToken(d.telegramBotToken || '');
+        setTelegramChatId(d.telegramChatId || '');
+        setWhatsappGreeting(d.whatsappGreeting || '');
+        try {
+          const kw = d.searchKeywords;
+          setSearchKeywords(Array.isArray(kw) ? kw : kw ? JSON.parse(kw as string) : []);
+        } catch { setSearchKeywords([]); }
       }
     } catch {
       setError('فشل في تحميل الإعدادات');
@@ -87,6 +103,8 @@ export default function SettingsPage() {
         storePhone, storePhone2, storeEmail, storeAddress,
         socialFacebook, socialInstagram, socialTiktok, socialWhatsapp, socialTelegram,
         termsAndConditions, privacyPolicy, returnPolicy,
+        telegramBotToken, telegramChatId, whatsappGreeting,
+        searchKeywords: JSON.stringify(searchKeywords),
       };
       const result = await putJson(`${ADMIN_BASE}/settings`, payload, opts);
       if (result.success) {
@@ -232,6 +250,97 @@ export default function SettingsPage() {
                 placeholder="https://t.me/..."
                 className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm" dir="ltr" />
             </div>
+          </div>
+        </section>
+
+        {/* Telegram Bot */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Bot size={18} className="text-primary" />
+            <h2 className="font-bold text-foreground">بوت تيليغرام (إشعارات الموظفين)</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            عند إعداد البوت، سيتم إرسال إشعارات تلقائية للموظفين عند ورود طلب جديد أو تذكرة دعم.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Bot Token (من @BotFather)</label>
+              <input type="password" value={telegramBotToken} onChange={(e) => setTelegramBotToken(e.target.value)}
+                placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm font-mono" dir="ltr" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Chat ID (المجموعة أو القناة)</label>
+              <input type="text" value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)}
+                placeholder="-1001234567890"
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm font-mono" dir="ltr" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">رسالة واتساب الترحيبية</label>
+              <input type="text" value={whatsappGreeting} onChange={(e) => setWhatsappGreeting(e.target.value)}
+                placeholder="مرحبًا، أحتاج مساعدة بخصوص..."
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm" />
+            </div>
+          </div>
+        </section>
+
+        {/* Search Keywords */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Search size={18} className="text-primary" />
+            <h2 className="font-bold text-foreground">كلمات البحث المقترحة</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            هذه الكلمات تظهر كاقتراحات في شريط البحث للزبائن قبل النتائج التلقائية.
+          </p>
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={newKeyword}
+              onChange={(e) => setNewKeyword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const kw = newKeyword.trim();
+                  if (kw && !searchKeywords.includes(kw)) {
+                    setSearchKeywords([...searchKeywords, kw]);
+                    setNewKeyword('');
+                  }
+                }
+              }}
+              placeholder="أضف كلمة بحث..."
+              className="flex-1 px-3 py-2 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const kw = newKeyword.trim();
+                if (kw && !searchKeywords.includes(kw)) {
+                  setSearchKeywords([...searchKeywords, kw]);
+                  setNewKeyword('');
+                }
+              }}
+              className="px-3 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {searchKeywords.map((kw) => (
+              <span key={kw} className="inline-flex items-center gap-1 px-3 py-1.5 bg-muted rounded-full text-sm text-foreground">
+                {kw}
+                <button
+                  type="button"
+                  onClick={() => setSearchKeywords(searchKeywords.filter((k) => k !== kw))}
+                  className="text-muted-foreground hover:text-red-500 transition"
+                >
+                  <X size={14} />
+                </button>
+              </span>
+            ))}
+            {searchKeywords.length === 0 && (
+              <p className="text-xs text-muted-foreground">لم تتم إضافة كلمات بعد</p>
+            )}
           </div>
         </section>
 

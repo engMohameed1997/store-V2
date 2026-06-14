@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { cn } from '@/lib/utils';
+import { filterNavItemsByRole, getRolePermissions } from '@/lib/permissions';
 
 const NAV_ITEMS = [
   { href: '/mx-panel', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -57,6 +58,9 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
+  const visibleItems = user ? filterNavItemsByRole(NAV_ITEMS, user.role) : NAV_ITEMS;
+  const roleInfo = user ? getRolePermissions(user.role) : null;
+
   const isActive = (href: string) => {
     if (href === '/mx-panel') return pathname === '/mx-panel';
     return pathname.startsWith(href);
@@ -81,7 +85,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
           return (
@@ -110,7 +114,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
           <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">
             {user.firstName} {user.lastName}
             <br />
-            <span className="text-[10px] opacity-70">{user.role}</span>
+            <span className="text-[10px] opacity-70">{roleInfo?.labelAr || user.role}</span>
           </div>
         )}
 

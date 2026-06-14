@@ -251,7 +251,7 @@ export default function ProductsPage() {
               >
                 <option value="all">الكل</option>
                 <option value="in_stock">متوفر</option>
-                <option value="out_of_stock">نفد من المخزون</option>
+                <option value="out_of_stock">نفذ من المخزون</option>
               </select>
             </div>
 

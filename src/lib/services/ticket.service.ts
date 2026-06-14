@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
 import { TicketStatus, TicketPriority } from "@/generated/prisma/client";
+import { TelegramService } from "./telegram.service";
 
 export class TicketService {
   static async list(status?: TicketStatus) {
@@ -61,6 +62,15 @@ export class TicketService {
         updatedAt: new Date(),
       },
     });
+
+    // Fire-and-forget Telegram notification for customer messages
+    if (!isStaff) {
+      TelegramService.notifyNewMessage({
+        ticketNumber: ticket.ticketNumber,
+        customerName: `${message.user.firstName} ${message.user.lastName}`,
+        messagePreview: body,
+      }).catch(() => {});
+    }
 
     return message;
   }

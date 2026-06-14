@@ -10,6 +10,11 @@ import {
   Package,
   Eye,
   FolderTree,
+  Heart,
+  ShoppingCart,
+  Crown,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson } from '@/lib/client/api';
@@ -59,6 +64,27 @@ interface PopularSearch {
   count: number;
 }
 
+interface OrderCompletionRate {
+  total: number;
+  completed: number;
+  cancelled: number;
+  rate: number;
+}
+
+interface VipCustomer {
+  id: string;
+  name: string;
+  phone: string | null;
+  orderCount: number;
+  totalRevenue: number;
+}
+
+interface WishlistVsCart {
+  totalWishlist: number;
+  totalCart: number;
+  products: { id: string; name: string; wishlistCount: number; cartCount: number }[];
+}
+
 interface ReportsData {
   topProducts: TopProduct[];
   topCustomers: TopCustomer[];
@@ -66,6 +92,9 @@ interface ReportsData {
   mostViewedProducts: MostViewedProduct[];
   topWishlisted: TopWishlistedProduct[];
   popularSearches: PopularSearch[];
+  orderCompletionRate?: OrderCompletionRate;
+  vipCustomers?: VipCustomer[];
+  wishlistVsCart?: WishlistVsCart;
 }
 
 function formatPrice(price: number | string): string {
@@ -124,6 +153,34 @@ export default function ReportsPage() {
         <BarChart3 size={24} className="text-primary" />
         <h1 className="text-2xl font-bold text-foreground">التقارير والتحليلات</h1>
       </div>
+
+      {/* Order Completion Rate + Summary Cards */}
+      {data?.orderCompletionRate && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="bg-card border border-border rounded-2xl p-4 text-center">
+            <p className="text-2xl font-bold text-foreground">{data.orderCompletionRate.total.toLocaleString('ar-IQ')}</p>
+            <p className="text-xs text-muted-foreground mt-1">اجمالي الطلبات</p>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-4 text-center">
+            <div className="flex items-center justify-center gap-1">
+              <CheckCircle2 size={16} className="text-emerald-500" />
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data.orderCompletionRate.completed.toLocaleString('ar-IQ')}</p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">مكتملة</p>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-4 text-center">
+            <div className="flex items-center justify-center gap-1">
+              <XCircle size={16} className="text-red-500" />
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{data.orderCompletionRate.cancelled.toLocaleString('ar-IQ')}</p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">ملغاة</p>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-4 text-center">
+            <p className="text-2xl font-bold text-primary">{data.orderCompletionRate.rate}%</p>
+            <p className="text-xs text-muted-foreground mt-1">معدل الاتمام</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Selling Products */}
@@ -264,6 +321,77 @@ export default function ReportsPage() {
                   <span className="text-sm font-bold text-rose-600 dark:text-rose-400 shrink-0">
                     {w.wishlistCount} زبون مفضل
                   </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* VIP Customers */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Crown size={18} className="text-amber-500" />
+            <h2 className="font-bold text-foreground">الزبائن المميزون (VIP)</h2>
+          </div>
+          {!data?.vipCustomers || data.vipCustomers.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>
+          ) : (
+            <div className="space-y-2">
+              {data.vipCustomers.map((c, i) => (
+                <div key={c.id} className="flex items-center gap-3 py-2 border-b border-border last:border-b-0">
+                  <span className="w-6 h-6 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{c.name}</p>
+                    {c.phone && <p className="text-[11px] text-muted-foreground" dir="ltr">{c.phone}</p>}
+                  </div>
+                  <div className="text-left shrink-0">
+                    <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{formatPrice(c.totalRevenue)} د.ع</p>
+                    <p className="text-[10px] text-muted-foreground">{c.orderCount} طلب</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Wishlist vs Cart */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Heart size={18} className="text-pink-500" />
+            <h2 className="font-bold text-foreground">المفضلة مقابل السلة</h2>
+          </div>
+          {data?.wishlistVsCart && (
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1 bg-pink-50 dark:bg-pink-900/10 rounded-xl p-3 text-center">
+                <Heart size={16} className="mx-auto text-pink-500 mb-1" />
+                <p className="text-lg font-bold text-pink-600 dark:text-pink-400">{data.wishlistVsCart.totalWishlist.toLocaleString('ar-IQ')}</p>
+                <p className="text-[10px] text-muted-foreground">عنصر بالمفضلة</p>
+              </div>
+              <div className="flex-1 bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3 text-center">
+                <ShoppingCart size={16} className="mx-auto text-blue-500 mb-1" />
+                <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{data.wishlistVsCart.totalCart.toLocaleString('ar-IQ')}</p>
+                <p className="text-[10px] text-muted-foreground">عنصر بالسلة</p>
+              </div>
+            </div>
+          )}
+          {!data?.wishlistVsCart?.products || data.wishlistVsCart.products.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>
+          ) : (
+            <div className="space-y-2">
+              {data.wishlistVsCart.products.map((p, i) => (
+                <div key={p.id} className="flex items-center gap-3 py-2 border-b border-border last:border-b-0">
+                  <span className="w-6 h-6 rounded-full bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 text-xs font-bold flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs shrink-0">
+                    <span className="text-pink-600 dark:text-pink-400 font-bold">{p.wishlistCount} مفضلة</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">{p.cartCount} سلة</span>
+                  </div>
                 </div>
               ))}
             </div>
