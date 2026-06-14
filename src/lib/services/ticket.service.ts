@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
-import { TicketStatus, TicketPriority } from "@/generated/prisma/client";
+import { TicketStatus } from "@/lib/types/ticket";
 import { TelegramService } from "./telegram.service";
 
 export class TicketService {

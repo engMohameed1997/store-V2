@@ -3,7 +3,7 @@ import { adminRoute } from "@/lib/api/route-handler";
 import { apiSuccess, apiCreated } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { TicketService } from "@/lib/services/ticket.service";
-import { TicketStatus } from "@/generated/prisma/client";
+import { TicketStatus } from "@/lib/types/ticket";
 import { z } from "zod";
 
 const replySchema = z.object({

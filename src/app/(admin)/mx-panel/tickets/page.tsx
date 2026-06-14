@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson, postJson, putJson } from '@/lib/client/api';
-import { TicketStatus } from '@/generated/prisma/client';
+import { TicketStatus } from '@/lib/types/ticket';
 
 const ADMIN_BASE = '/api/v1/mx-panel';
 

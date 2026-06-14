@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { adminRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { TicketService } from "@/lib/services/ticket.service";
-import { TicketStatus } from "@/generated/prisma/client";
+import { TicketStatus } from "@/lib/types/ticket";
 
 export const GET = adminRoute(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
