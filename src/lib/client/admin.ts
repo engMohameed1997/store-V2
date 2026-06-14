@@ -22,6 +22,9 @@ interface ListParams {
   search?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  isActive?: boolean;
+  branchId?: string;
+  stockStatus?: "all" | "in_stock" | "out_of_stock";
 }
 
 // ─── Product Types ──────────────────────────────────────────────

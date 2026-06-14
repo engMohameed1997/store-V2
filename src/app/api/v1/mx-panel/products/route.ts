@@ -9,6 +9,9 @@ import { sanitizeSearchQuery } from "@/lib/api/sanitize";
 export const GET = adminRoute(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
 
+  const isActiveParam = searchParams.get("isActive");
+  const isActive = isActiveParam === "true" ? true : isActiveParam === "false" ? false : undefined;
+
   const result = await ProductService.list({
     search: searchParams.get("search")
       ? sanitizeSearchQuery(searchParams.get("search")!)
@@ -20,6 +23,9 @@ export const GET = adminRoute(async (request: NextRequest) => {
     sortBy: searchParams.get("sortBy") || undefined,
     sortOrder: (searchParams.get("sortOrder") as "asc" | "desc") || undefined,
     activeOnly: false,
+    isActive,
+    branchId: searchParams.get("branchId") || undefined,
+    stockStatus: (searchParams.get("stockStatus") as "all" | "in_stock" | "out_of_stock") || undefined,
   });
 
   return apiPaginated(result.products, result.total, result.page, result.limit);

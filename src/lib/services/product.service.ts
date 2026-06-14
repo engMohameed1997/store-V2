@@ -99,14 +99,21 @@ export class ProductService {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     activeOnly?: boolean;
+    isActive?: boolean;
+    branchId?: string;
+    stockStatus?: "all" | "in_stock" | "out_of_stock";
   }) {
     const page = filters.page || 1;
     const limit = Math.min(filters.limit || 20, MAX_PAGINATION_LIMIT);
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { deletedAt: null };
+    const where: any = { deletedAt: null };
 
-    if (filters.activeOnly !== false) where.isActive = true;
+    if (filters.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    } else if (filters.activeOnly !== false) {
+      where.isActive = true;
+    }
 
     if (filters.search) {
       where.OR = [
@@ -131,7 +138,53 @@ export class ProductService {
       if (filters.maxPrice !== undefined) (where.price as Record<string, unknown>).lte = filters.maxPrice;
     }
 
-    if (filters.inStock) where.stock = { gt: 0 };
+    if (filters.branchId) {
+      if (filters.stockStatus === "in_stock") {
+        where.branchInventories = {
+          some: {
+            branchId: filters.branchId,
+            stock: { gt: 0 }
+          }
+        };
+      } else if (filters.stockStatus === "out_of_stock") {
+        where.AND = [
+          {
+            OR: [
+              {
+                branchInventories: {
+                  none: {
+                    branchId: filters.branchId
+                  }
+                }
+              },
+              {
+                branchInventories: {
+                  some: {
+                    branchId: filters.branchId,
+                    stock: { lte: 0 }
+                  }
+                }
+              }
+            ]
+          }
+        ];
+      } else {
+        where.branchInventories = {
+          some: {
+            branchId: filters.branchId
+          }
+        };
+      }
+    } else {
+      if (filters.stockStatus === "in_stock") {
+        where.stock = { gt: 0 };
+      } else if (filters.stockStatus === "out_of_stock") {
+        where.stock = { lte: 0 };
+      } else if (filters.inStock) {
+        where.stock = { gt: 0 };
+      }
+    }
+
     if (filters.featured) where.isFeatured = true;
 
     const ALLOWED_SORT_FIELDS = ["createdAt", "price", "name", "soldCount", "avgRating", "reviewCount"];
