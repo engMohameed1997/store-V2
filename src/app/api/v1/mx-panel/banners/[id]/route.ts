@@ -9,6 +9,7 @@ const updateBannerSchema = z.object({
   titleAr: z.string().max(200).optional(),
   image: z.string().url().optional(),
   mobileImage: z.string().url().optional(),
+  videoUrl: z.string().optional(),
   link: z.string().url().optional(),
   position: z.number().int().min(0).optional(),
   isActive: z.boolean().optional(),

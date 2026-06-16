@@ -5,14 +5,28 @@ import { ProductService } from "@/lib/services/product.service";
 import { productSearchSchema } from "@/lib/validators/product";
 import { validateQuery } from "@/lib/api/validate";
 import { sanitizeSearchQuery } from "@/lib/api/sanitize";
+import { optionalAuth } from "@/lib/api/auth-guard";
+import { db } from "@/lib/db";
 
 export const GET = publicRoute(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const filters = validateQuery(searchParams, productSearchSchema);
 
+  const sanitizedQuery = filters.search ? sanitizeSearchQuery(filters.search) : undefined;
+
+  if (sanitizedQuery && sanitizedQuery.trim().length > 1) {
+    const authUser = await optionalAuth(request);
+    db.searchHistory.create({
+      data: {
+        query: sanitizedQuery.trim().toLowerCase(),
+        userId: authUser?.userId || null,
+      }
+    }).catch(err => console.error("Failed to log search history:", err));
+  }
+
   const result = await ProductService.list({
     ...filters,
-    search: filters.search ? sanitizeSearchQuery(filters.search) : undefined,
+    search: sanitizedQuery,
   });
 
   return apiPaginated(result.products, result.total, result.page, result.limit);

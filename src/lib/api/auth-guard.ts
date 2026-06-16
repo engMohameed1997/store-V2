@@ -61,7 +61,14 @@ export async function requireRole(
 }
 
 export async function requireAdmin(request: NextRequest): Promise<AuthUser> {
-  return requireRole(request, "ADMIN", "SUPER_ADMIN");
+  return requireRole(
+    request,
+    "ADMIN",
+    "SUPER_ADMIN",
+    "SALES",
+    "WAREHOUSE",
+    "CUSTOMER_SERVICE"
+  );
 }
 
 export async function requireSuperAdmin(request: NextRequest): Promise<AuthUser> {

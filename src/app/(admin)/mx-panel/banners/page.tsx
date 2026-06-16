@@ -26,7 +26,7 @@ export default function BannersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    title: '', titleAr: '', image: '', mobileImage: '', link: '', position: '1',
+    title: '', titleAr: '', image: '', mobileImage: '', videoUrl: '', link: '', position: '1',
   });
   const [submitting, setSubmitting] = useState(false);
   const [uploadingField, setUploadingField] = useState<'image' | 'mobileImage' | null>(null);
@@ -56,7 +56,7 @@ export default function BannersPage() {
 
   const resetForm = () => {
     const maxPosition = banners.length > 0 ? Math.max(...banners.map(b => b.position)) : 0;
-    setFormData({ title: '', titleAr: '', image: '', mobileImage: '', link: '', position: String(maxPosition + 1) });
+    setFormData({ title: '', titleAr: '', image: '', mobileImage: '', videoUrl: '', link: '', position: String(maxPosition + 1) });
     setShowForm(false);
     setEditingId(null);
   };
@@ -75,11 +75,12 @@ export default function BannersPage() {
 
     setSubmitting(true);
     try {
-      const payload: CreateBannerInput = {
+      const payload: CreateBannerInput & { videoUrl?: string } = {
         title,
         titleAr: formData.titleAr.trim() || undefined,
         image,
         mobileImage: formData.mobileImage.trim() || undefined,
+        videoUrl: formData.videoUrl.trim() || undefined,
         link: formData.link.trim() || undefined,
         position: Number(formData.position) || 0,
       };
@@ -93,7 +94,7 @@ export default function BannersPage() {
           alert(result.error.message);
         }
       } else {
-        const result = await client.banners.create(payload);
+        const result = await client.banners.create(payload as any);
         if (result.success) {
           await fetchBanners();
           resetForm();
@@ -133,6 +134,7 @@ export default function BannersPage() {
       titleAr: banner.titleAr || '',
       image: uploadPathPattern.test(banner.image) ? banner.image : '',
       mobileImage: banner.mobileImage && uploadPathPattern.test(banner.mobileImage) ? banner.mobileImage : '',
+      videoUrl: (banner as any).videoUrl || '',
       link: banner.link || '',
       position: String(banner.position),
     });
@@ -262,6 +264,17 @@ export default function BannersPage() {
               </label>
             </div>
             <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">رابط الفيديو الترويجي (اختياري)</label>
+              <input
+                type="text"
+                value={formData.videoUrl}
+                onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
+                dir="ltr"
+                placeholder="https://..."
+              />
+            </div>
+            <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">رابط التوجيه</label>
               <input
                 type="url"
@@ -337,6 +350,11 @@ export default function BannersPage() {
                   }`}>
                     {banner.isActive ? 'نشط' : 'معطّل'}
                   </span>
+                  {(banner as any).videoUrl && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/90 text-white">
+                      فيديو
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="p-4">

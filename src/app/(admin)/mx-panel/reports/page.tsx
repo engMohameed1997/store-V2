@@ -46,11 +46,26 @@ interface MostViewedProduct {
   soldCount: number;
 }
 
+interface TopWishlistedProduct {
+  id: string;
+  name: string;
+  nameAr: string | null;
+  price: number;
+  wishlistCount: number;
+}
+
+interface PopularSearch {
+  query: string;
+  count: number;
+}
+
 interface ReportsData {
   topProducts: TopProduct[];
   topCustomers: TopCustomer[];
   topCategories: TopCategory[];
   mostViewedProducts: MostViewedProduct[];
+  topWishlisted: TopWishlistedProduct[];
+  popularSearches: PopularSearch[];
 }
 
 function formatPrice(price: number | string): string {
@@ -221,6 +236,61 @@ export default function ReportsPage() {
                       </span>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Top Wishlisted Products */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={18} className="text-rose-500" />
+            <h2 className="font-bold text-foreground">المنتجات الأكثر إضافة للمفضلة</h2>
+          </div>
+          {!data?.topWishlisted || data.topWishlisted.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>
+          ) : (
+            <div className="space-y-2">
+              {data.topWishlisted.map((w, i) => (
+                <div key={w.id} className="flex items-center gap-3 py-2 border-b border-border last:border-b-0">
+                  <span className="w-6 h-6 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{w.nameAr || w.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{formatPrice(w.price)} د.ع</p>
+                  </div>
+                  <span className="text-sm font-bold text-rose-600 dark:text-rose-400 shrink-0">
+                    {w.wishlistCount} زبون مفضل
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Popular Searches */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Eye size={18} className="text-teal-500" />
+            <h2 className="font-bold text-foreground">أكثر الكلمات بحثاً</h2>
+          </div>
+          {!data?.popularSearches || data.popularSearches.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات</p>
+          ) : (
+            <div className="space-y-2">
+              {data.popularSearches.map((s, i) => (
+                <div key={s.query} className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 text-xs font-bold flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm font-medium text-foreground">{s.query}</span>
+                  </div>
+                  <span className="text-sm font-bold text-teal-600 dark:text-teal-400 shrink-0">
+                    {s.count.toLocaleString('ar-IQ')} بحث
+                  </span>
                 </div>
               ))}
             </div>

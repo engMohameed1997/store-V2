@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 
-const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
+const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN', 'SALES', 'WAREHOUSE', 'CUSTOMER_SERVICE'];
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth();

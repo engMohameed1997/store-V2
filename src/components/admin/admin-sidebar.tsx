@@ -21,6 +21,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Store,
+  FolderOpen,
+  MapPin,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { cn } from '@/lib/utils';
@@ -34,6 +37,9 @@ const NAV_ITEMS = [
   { href: '/mx-panel/brands', label: 'البراندات', icon: Tag },
   { href: '/mx-panel/coupons', label: 'الكوبونات', icon: Ticket },
   { href: '/mx-panel/banners', label: 'البانرات', icon: Image },
+  { href: '/mx-panel/media', label: 'مكتبة الوسائط', icon: FolderOpen },
+  { href: '/mx-panel/branches', label: 'الفروع والمخازن', icon: MapPin },
+  { href: '/mx-panel/tickets', label: 'تذاكر الدعم', icon: MessageSquare },
   { href: '/mx-panel/reviews', label: 'المراجعات', icon: Star },
   { href: '/mx-panel/warranties', label: 'الضمانات', icon: Shield },
   { href: '/mx-panel/shipping', label: 'التوصيل', icon: Truck },

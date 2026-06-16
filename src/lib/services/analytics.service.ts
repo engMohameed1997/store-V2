@@ -91,7 +91,14 @@ export class AnalyticsService {
       if (cached) return cached;
     }
 
-    const [topProducts, topCustomers, topCategories, mostViewedProducts] = await Promise.all([
+    const [
+      topProducts,
+      topCustomers,
+      topCategories,
+      mostViewedProducts,
+      topWishlisted,
+      popularSearches
+    ] = await Promise.all([
       // Top selling products
       db.product.findMany({
         where: { deletedAt: null },
@@ -131,6 +138,32 @@ export class AnalyticsService {
         orderBy: { viewCount: "desc" },
         take: 10,
       }),
+      // Most wishlisted products
+      db.product.findMany({
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          nameAr: true,
+          price: true,
+          _count: { select: { wishlistItems: true } },
+        },
+        orderBy: { wishlistItems: { _count: "desc" } },
+        take: 10,
+      }),
+      // Popular search terms
+      db.searchHistory.groupBy({
+        by: ["query"],
+        _count: {
+          query: true,
+        },
+        orderBy: {
+          _count: {
+            query: "desc",
+          },
+        },
+        take: 10,
+      }),
     ]);
 
     const result: ReportsData = {
@@ -147,6 +180,17 @@ export class AnalyticsService {
         productCount: c._count.products,
       })),
       mostViewedProducts,
+      topWishlisted: topWishlisted.map((w) => ({
+        id: w.id,
+        name: w.name,
+        nameAr: w.nameAr,
+        price: Number(w.price),
+        wishlistCount: w._count.wishlistItems,
+      })),
+      popularSearches: popularSearches.map((s) => ({
+        query: s.query,
+        count: s._count.query,
+      })),
     };
 
     cache.set(REPORTS_CACHE_KEY, result, CACHE_TTL.ANALYTICS_DASHBOARD);
@@ -172,4 +216,6 @@ interface ReportsData {
   topCustomers: { id: string; name: string; phone: string | null; orderCount: number }[];
   topCategories: { id: string; name: string; productCount: number }[];
   mostViewedProducts: { id: string; name: string; nameAr: string | null; viewCount: number; soldCount: number }[];
+  topWishlisted: { id: string; name: string; nameAr: string | null; price: number; wishlistCount: number }[];
+  popularSearches: { query: string; count: number }[];
 }

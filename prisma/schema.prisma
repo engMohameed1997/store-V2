@@ -15,6 +15,9 @@ enum UserRole {
   CUSTOMER
   ADMIN
   SUPER_ADMIN
+  SALES
+  WAREHOUSE
+  CUSTOMER_SERVICE
 }
 
 enum UserStatus {
@@ -199,6 +202,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   supportTickets      SupportTicket[]
   ticketMessages      TicketMessage[]
+  searchHistories     SearchHistory[]
 
   @@index([email])
   @@index([phone])
@@ -367,6 +371,7 @@ model Product {
   tags            ProductTag[]
   digitalAssets   DigitalAsset[]
   couponProducts  CouponProduct[]
+  branchInventories BranchInventory[]
 
   @@index([slug])
   @@index([categoryId])
@@ -426,6 +431,7 @@ model ProductVariant {
   orderItems    OrderItem[]
   images        ProductImage[]
   inventoryLogs InventoryLog[]
+  branchInventories BranchInventory[]
 
   @@index([productId])
   @@map("product_variants")
@@ -1048,6 +1054,7 @@ model Banner {
   titleAr   String?         @map("title_ar")
   image     String
   mobileImage String?       @map("mobile_image")
+  videoUrl  String?         @map("video_url")
   link      String?
   placement BannerPlacement @default(HOME_HERO)
   position  Int             @default(0)
@@ -1205,3 +1212,73 @@ model Warranty {
   @@index([status])
   @@map("warranties")
 }
+
+// ============================================
+// SEARCH HISTORY
+// ============================================
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  query     String
+  userId    String?  @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([query])
+  @@index([createdAt])
+  @@map("search_history")
+}
+
+// ============================================
+// BRANCHES & MULTI-WAREHOUSE INVENTORY
+// ============================================
+
+model Branch {
+  id          String   @id @default(cuid())
+  name        String
+  nameAr      String?  @map("name_ar")
+  address     String
+  addressAr   String?  @map("address_ar")
+  phone       String
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  inventories BranchInventory[]
+
+  @@map("branches")
+}
+
+model BranchInventory {
+  id        String  @id @default(cuid())
+  branchId  String  @map("branch_id")
+  productId String  @map("product_id")
+  variantId String? @map("variant_id")
+  stock     Int     @default(0)
+
+  branch    Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, productId, variantId])
+  @@index([branchId])
+  @@index([productId])
+  @@map("branch_inventories")
+}
+
+// ============================================
+// MEDIA ASSETS (GALLERY)
+// ============================================
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  url       String
+  fileName  String   @map("file_name")
+  fileSize  Int      @map("file_size")
+  mimeType  String   @map("mime_type")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("media_assets")
+}
+

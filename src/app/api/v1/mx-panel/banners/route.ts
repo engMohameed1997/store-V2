@@ -17,6 +17,7 @@ const createBannerSchema = z.object({
     /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
     "يجب رفع الصورة أولاً عبر نقطة الرفع الموحدة"
   ).optional(),
+  videoUrl: z.string().optional(),
   link: z.string().url().optional(),
   position: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
