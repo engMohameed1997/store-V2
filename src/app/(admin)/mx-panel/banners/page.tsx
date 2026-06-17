@@ -29,7 +29,7 @@ export default function BannersPage() {
     title: '', titleAr: '', image: '', mobileImage: '', videoUrl: '', link: '', position: '1',
   });
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingField, setUploadingField] = useState<'image' | 'mobileImage' | null>(null);
+  const [uploadingField, setUploadingField] = useState<'image' | 'mobileImage' | 'video' | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchBanners = useCallback(async () => {
@@ -94,7 +94,7 @@ export default function BannersPage() {
           alert(result.error.message);
         }
       } else {
-        const result = await client.banners.create(payload as any);
+        const result = await client.banners.create(payload);
         if (result.success) {
           await fetchBanners();
           resetForm();
@@ -109,20 +109,20 @@ export default function BannersPage() {
     }
   };
 
-  const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
+  const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp|mp4|webm)$/i;
 
-  const handleBannerUpload = async (field: 'image' | 'mobileImage', file?: File) => {
+  const handleBannerUpload = async (field: 'image' | 'mobileImage' | 'videoUrl', file?: File) => {
     if (!file || !accessToken) return;
-    setUploadingField(field);
+    setUploadingField(field === 'videoUrl' ? 'video' : field);
     try {
       const result = await uploadFile(file, 'banners', accessToken);
       if (result.success && result.data) {
         setFormData((prev) => ({ ...prev, [field]: result.data!.url }));
       } else if (!result.success) {
-        alert(`فشل رفع الصورة: ${result.error.message}`);
+        alert(`فشل رفع الملف: ${result.error.message}`);
       }
     } catch {
-      alert('فشل في رفع الصورة، حاول مرة أخرى');
+      alert('فشل في رفع الملف، حاول مرة أخرى');
     } finally {
       setUploadingField(null);
     }
@@ -134,7 +134,7 @@ export default function BannersPage() {
       titleAr: banner.titleAr || '',
       image: uploadPathPattern.test(banner.image) ? banner.image : '',
       mobileImage: banner.mobileImage && uploadPathPattern.test(banner.mobileImage) ? banner.mobileImage : '',
-      videoUrl: (banner as any).videoUrl || '',
+      videoUrl: banner.videoUrl || '',
       link: banner.link || '',
       position: String(banner.position),
     });
@@ -263,16 +263,48 @@ export default function BannersPage() {
                 />
               </label>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">رابط الفيديو الترويجي (اختياري)</label>
-              <input
-                type="text"
-                value={formData.videoUrl}
-                onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                dir="ltr"
-                placeholder="https://..."
-              />
+            {/* Promo Video Upload or Link */}
+            <div className="sm:col-span-2 lg:col-span-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">الفيديو الترويجي (اختياري)</label>
+              <div className="flex flex-col gap-2">
+                <label className={`flex items-center gap-3 p-2.5 border rounded-xl cursor-pointer transition bg-background ${
+                  formData.videoUrl ? 'border-border hover:border-primary/50' : 'border-2 border-dashed border-border hover:border-primary/50'
+                }`}>
+                  {uploadingField === 'video' ? (
+                    <Loader2 size={18} className="animate-spin text-muted-foreground shrink-0" />
+                  ) : formData.videoUrl ? (
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                      <span className="text-[10px] font-bold text-blue-600">فيديو</span>
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <Upload size={16} className="text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    {formData.videoUrl
+                      ? <p className="text-xs text-foreground truncate" dir="ltr">{formData.videoUrl}</p>
+                      : <p className="text-xs text-muted-foreground">اضغط لرفع فيديو ترويجي</p>
+                    }
+                    <p className="text-[10px] text-muted-foreground mt-0.5">MP4, WebM — حد أقصى 50MB</p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm"
+                    className="hidden"
+                    disabled={uploadingField !== null}
+                    onChange={(e) => handleBannerUpload('videoUrl', e.target.files?.[0])}
+                  />
+                </label>
+                <input
+                  type="text"
+                  value={formData.videoUrl}
+                  onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                  className="w-full px-3 py-2 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-[11px]"
+                  dir="ltr"
+                  placeholder="أو ضع رابط خارجي هنا..."
+                />
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">رابط التوجيه</label>
@@ -350,7 +382,7 @@ export default function BannersPage() {
                   }`}>
                     {banner.isActive ? 'نشط' : 'معطّل'}
                   </span>
-                  {(banner as any).videoUrl && (
+                  {banner.videoUrl && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/90 text-white">
                       فيديو
                     </span>

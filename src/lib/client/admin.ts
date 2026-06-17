@@ -261,6 +261,7 @@ export interface AdminBanner {
   titleAr?: string;
   image: string;
   mobileImage?: string;
+  videoUrl?: string;
   link?: string;
   position: number;
   isActive: boolean;
@@ -274,6 +275,7 @@ export interface CreateBannerInput {
   titleAr?: string;
   image: string;
   mobileImage?: string;
+  videoUrl?: string;
   link?: string;
   position?: number;
   isActive?: boolean;
@@ -516,10 +518,10 @@ export function createAdminClient(token: string) {
     // ── Analytics ─────────────────────────────────────────────
     analytics: {
       getDashboard() {
-        return getJson<any>(`${ADMIN_BASE}/analytics`, opts);
+        return getJson<unknown>(`${ADMIN_BASE}/analytics`, opts);
       },
       getReports() {
-        return getJson<any>(`${ADMIN_BASE}/analytics/reports`, opts);
+        return getJson<unknown>(`${ADMIN_BASE}/analytics/reports`, opts);
       },
     },
 

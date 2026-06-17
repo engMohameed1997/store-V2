@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { protectedRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { Errors } from "@/lib/api/errors";
-import { UploadService, MAX_FILE_SIZE, MAX_FILES_PER_REQUEST } from "@/lib/services/upload.service";
+import { UploadService, MAX_FILE_SIZE, MAX_VIDEO_SIZE, MAX_FILES_PER_REQUEST } from "@/lib/services/upload.service";
 
 export const POST = protectedRoute(async (request: NextRequest, context) => {
   const formData = await request.formData();
@@ -29,16 +29,22 @@ export const POST = protectedRoute(async (request: NextRequest, context) => {
   // Pre-validate all file sizes before any processing begins
   for (const file of files) {
     if (file.size === 0) throw Errors.badRequest("Empty files are not allowed");
-    if (file.size > MAX_FILE_SIZE) {
-      throw Errors.badRequest(`File exceeds the 5MB size limit`);
+    const isVideo = file.type.startsWith("video/") || file.name.endsWith(".mp4") || file.name.endsWith(".webm");
+    const limit = isVideo ? MAX_VIDEO_SIZE : MAX_FILE_SIZE;
+    if (file.size > limit) {
+      const limitMb = limit / (1024 * 1024);
+      throw Errors.badRequest(`File exceeds the ${limitMb}MB size limit`);
     }
   }
 
-  // Process each file: magic bytes check → re-encode → strip metadata → save
+  // Process each file: magic bytes check → re-encode/save → strip metadata → save
   const results = [];
   for (const file of files) {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await UploadService.processAndSave(buffer, folder, context.user?.userId);
+    const isVideo = file.type.startsWith("video/") || file.name.endsWith(".mp4") || file.name.endsWith(".webm");
+    const result = isVideo
+      ? await UploadService.processAndSaveVideo(buffer, folder, context.user?.userId)
+      : await UploadService.processAndSave(buffer, folder, context.user?.userId);
     results.push(result);
   }
 

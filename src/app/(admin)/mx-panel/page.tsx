@@ -21,7 +21,7 @@ import { getJson, postJson } from '@/lib/client/api';
 const ADMIN_BASE = '/api/v1/mx-panel';
 
 interface DashboardData {
-  users: { total: number; newThisMonth: number; totalCustomers: number };
+  users: { total: number; newThisMonth: number; totalCustomers: number; activeUsers?: number };
   orders: { total: number; thisMonth: number; weekly: number; today: number; pending: number };
   revenue: { total: number; thisMonth: number; weekly: number; today: number };
   products: { total: number; lowStock: number; outOfStock: number };
@@ -226,7 +226,9 @@ export default function DashboardPage() {
               {data.users.totalCustomers.toLocaleString('ar-IQ')}{' '}
               <span className="text-xs font-normal text-muted-foreground">عميل</span>
             </p>
-            <p className="text-[11px] text-muted-foreground mt-1.5">
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+              النشطون (30 يوم): {data.users.activeUsers?.toLocaleString('ar-IQ') || 0}
+              <br />
               الجدد هذا الشهر: +{data.users.newThisMonth.toLocaleString('ar-IQ')}
             </p>
           </Link>

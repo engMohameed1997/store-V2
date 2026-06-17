@@ -40,4 +40,4 @@ export const POST = publicRoute(async (request: NextRequest) => {
     }
     throw error;
   }
-}, "auth");
+}, "refresh");

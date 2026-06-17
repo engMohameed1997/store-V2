@@ -1282,3 +1282,18 @@ model MediaAsset {
   @@map("media_assets")
 }
 
+// ============================================
+// PAGE VIEWS & ANALYTICS
+// ============================================
+
+model PageView {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  path      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([path])
+  @@index([createdAt])
+  @@map("page_views")
+}
+

@@ -4,7 +4,7 @@ import { checkRateLimit } from "./rate-limiter";
 import { AuthUser, requireAuth, requireAdmin, requireSuperAdmin, requireRole } from "./auth-guard";
 import type { UserRole } from "@/generated/prisma/client";
 
-type RateLimitTier = "default" | "auth" | "strict" | "search" | "upload";
+type RateLimitTier = "default" | "auth" | "refresh" | "strict" | "search" | "upload";
 
 interface RouteOptions {
   rateLimit?: RateLimitTier;

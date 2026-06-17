@@ -36,6 +36,7 @@ export class AnalyticsService {
       totalProducts,
       lowStockProducts,
       outOfStockProducts,
+      activeUsers,
     ] = await Promise.all([
       db.user.count({ where: { deletedAt: null } }),
       db.user.count({ where: { createdAt: { gte: thirtyDaysAgo }, deletedAt: null } }),
@@ -66,6 +67,13 @@ export class AnalyticsService {
         where: { deletedAt: null, isActive: true, stock: { gt: 0, lte: 5 } },
       }),
       db.product.count({ where: { deletedAt: null, isActive: true, stock: 0 } }),
+      db.pageView.groupBy({
+        by: ["userId"],
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+          userId: { not: null },
+        },
+      }).then((res) => res.length),
     ]);
 
     const recentOrders = await db.order.findMany({
@@ -77,7 +85,7 @@ export class AnalyticsService {
     });
 
     const result: DashboardData = {
-      users: { total: totalUsers, newThisMonth: newUsersThisMonth, totalCustomers },
+      users: { total: totalUsers, newThisMonth: newUsersThisMonth, totalCustomers, activeUsers },
       orders: { total: totalOrders, thisMonth: ordersThisMonth, weekly: ordersWeekly, today: ordersToday, pending: pendingOrders },
       revenue: {
         total: Number(revenue?._sum?.totalAmount || 0),
@@ -301,7 +309,7 @@ export class AnalyticsService {
 }
 
 interface DashboardData {
-  users: { total: number; newThisMonth: number; totalCustomers: number };
+  users: { total: number; newThisMonth: number; totalCustomers: number; activeUsers: number };
   orders: { total: number; thisMonth: number; weekly: number; today: number; pending: number };
   revenue: { total: number; thisMonth: number; weekly: number; today: number };
   products: { total: number; lowStock: number; outOfStock: number };

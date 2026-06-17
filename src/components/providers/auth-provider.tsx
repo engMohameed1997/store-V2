@@ -74,6 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         return true;
       }
+      // Don't clear auth on rate-limit (429) — keep existing session
+      if (result.status === 429) {
+        setState((prev) => ({ ...prev, isLoading: false }));
+        return false;
+      }
       clearAuth();
       return false;
     })();

@@ -105,6 +105,7 @@ function formatPrice(price: number | string): string {
 export default function ReportsPage() {
   const { accessToken } = useAuth();
   const [data, setData] = useState<ReportsData | null>(null);
+  const [pageViews, setPageViews] = useState<{ path: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -114,9 +115,16 @@ export default function ReportsPage() {
     if (!accessToken) return;
     setLoading(true);
     try {
-      const result = await getJson<ReportsData>(`${ADMIN_BASE}/analytics/reports`, opts);
+      const [result, pageViewsResult] = await Promise.all([
+        getJson<ReportsData>(`${ADMIN_BASE}/analytics/reports`, opts),
+        getJson<{ path: string; count: number }[]>(`${ADMIN_BASE}/analytics/page-views`, opts),
+      ]);
+
       if (result.success && result.data) {
         setData(result.data as unknown as ReportsData);
+      }
+      if (pageViewsResult.success && pageViewsResult.data) {
+        setPageViews(pageViewsResult.data as unknown as { path: string; count: number }[]);
       }
     } catch {
       setError('فشل في تحميل التقارير');
@@ -418,6 +426,33 @@ export default function ReportsPage() {
                   </div>
                   <span className="text-sm font-bold text-teal-600 dark:text-teal-400 shrink-0">
                     {s.count.toLocaleString('ar-IQ')} بحث
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Top Visited Pages */}
+        <section className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={18} className="text-indigo-500" />
+            <h2 className="font-bold text-foreground">أكثر الصفحات زيارة (Page Views)</h2>
+          </div>
+          {pageViews.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد بيانات زيارات بعد</p>
+          ) : (
+            <div className="space-y-2">
+              {pageViews.map((p, i) => (
+                <div key={p.path} className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm font-medium text-foreground" dir="ltr">{p.path}</span>
+                  </div>
+                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
+                    {p.count.toLocaleString('ar-IQ')} زيارة
                   </span>
                 </div>
               ))}

@@ -11,6 +11,7 @@ interface RateLimitConfig {
 const RATE_LIMITS: Record<string, RateLimitConfig> = {
   default: { windowMs: 60_000, maxRequests: 60 },
   auth: { windowMs: 900_000, maxRequests: 10 },
+  refresh: { windowMs: 300_000, maxRequests: 30 },
   strict: { windowMs: 60_000, maxRequests: 5 },
   search: { windowMs: 60_000, maxRequests: 30 },
   upload: { windowMs: 60_000, maxRequests: 10 },
