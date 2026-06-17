@@ -203,6 +203,7 @@ model User {
   supportTickets      SupportTicket[]
   ticketMessages      TicketMessage[]
   searchHistories     SearchHistory[]
+  chatSessions        ChatSession[]
 
   @@index([email])
   @@index([phone])
@@ -1296,4 +1297,74 @@ model PageView {
   @@index([createdAt])
   @@map("page_views")
 }
+
+// ============================================================
+// CHATBOT — Conversational AI System
+// ============================================================
+
+model ChatSession {
+  id            String          @id @default(cuid())
+  userId        String?         @map("user_id")
+  guestId       String?         @map("guest_id")
+  state         ChatState       @default(IDLE)
+  context       Json            @default("{}")
+  intentStack   Json            @default("[]") @map("intent_stack")
+  metadata      Json            @default("{}")
+  isHandedOff   Boolean         @default(false) @map("is_handed_off")
+  handoffReason String?         @map("handoff_reason")
+  satisfaction  Int?
+  resolvedAt    DateTime?       @map("resolved_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  user     User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@index([guestId])
+  @@index([state])
+  @@index([createdAt])
+  @@index([isHandedOff])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id          String      @id @default(cuid())
+  sessionId   String      @map("session_id")
+  role        MessageRole
+  content     String      @db.Text
+  intent      String?
+  confidence  Float?
+  metadata    Json        @default("{}")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("chat_messages")
+}
+
+enum ChatState {
+  IDLE
+  GREETING
+  PRODUCT_SEARCH
+  PRODUCT_DETAIL
+  RECOMMENDATION
+  CART_MANAGEMENT
+  CHECKOUT_ASSIST
+  ORDER_TRACKING
+  COMPLAINT
+  RETURN_REQUEST
+  FAQ
+  HUMAN_HANDOFF
+  CLOSED
+}
+
+enum MessageRole {
+  USER
+  BOT
+  SYSTEM
+  AGENT
+}
+
 

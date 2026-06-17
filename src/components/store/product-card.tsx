@@ -4,9 +4,7 @@ import Link from 'next/link';
 import { ShoppingCart, Heart, Star, Eye, Loader2 } from 'lucide-react';
 import type { ProductListItem } from '@/lib/types/store';
 import { useState } from 'react';
-import { useAuth } from '@/components/providers/auth-provider';
-import { postJson } from '@/lib/client/api';
-import { toast } from 'sonner';
+import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
 
 interface Props {
   product: ProductListItem;
@@ -34,32 +32,20 @@ export default function ProductCard({ product }: Props) {
   const rating = typeof product.avgRating === 'string' ? parseFloat(product.avgRating) : product.avgRating;
   const primaryImage = product.images?.[0];
 
-  const { isAuthenticated, accessToken } = useAuth();
+  const { addToCart, toggleWishlist, isInWishlist } = useCartWishlist();
   const [addingToCart, setAddingToCart] = useState(false);
+  const inWishlist = isInWishlist(product.id);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!isAuthenticated) {
-      toast.error('يرجى تسجيل الدخول أولاً');
-      return;
-    }
     setAddingToCart(true);
-    try {
-      const res = await postJson('/api/v1/cart', {
-        productId: product.id,
-        quantity: 1,
-      }, { token: accessToken! });
-      
-      if (res.success) {
-        toast.success('تمت الإضافة إلى السلة');
-      } else {
-        toast.error(!res.success ? res.error.message : 'حدث خطأ');
-      }
-    } catch (err) {
-      toast.error('حدث خطأ');
-    } finally {
-      setAddingToCart(false);
-    }
+    await addToCart(product.id, 1);
+    setAddingToCart(false);
+  };
+
+  const handleToggleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await toggleWishlist(product.id);
   };
 
   return (
@@ -103,10 +89,15 @@ export default function ProductCard({ product }: Props) {
 
         {/* Wishlist Button */}
         <button
-          className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-500 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 transition-all duration-300 shadow-sm"
-          title="إضافة للمفضلة"
+          onClick={handleToggleWishlist}
+          className={`absolute top-2 left-2 w-8 h-8 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center transition-all duration-300 shadow-sm ${
+            inWishlist
+              ? 'text-red-500 bg-red-50 dark:bg-red-950/40 opacity-100'
+              : 'text-gray-500 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20'
+          }`}
+          title={inWishlist ? 'حذف من المفضلة' : 'إضافة للمفضلة'}
         >
-          <Heart size={15} />
+          <Heart size={15} className={inWishlist ? 'fill-red-500 text-red-500' : ''} />
         </button>
 
         {/* Quick View */}

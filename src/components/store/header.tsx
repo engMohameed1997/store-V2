@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, ShoppingCart, Heart, User, Menu, X, ChevronDown, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
 import type { CategoryWithChildren } from '@/lib/types/store';
 
 export default function Header() {
@@ -17,6 +18,7 @@ export default function Header() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const { isAuthenticated, user, logout } = useAuth();
+  const { cartCount, wishlistCount } = useCartWishlist();
 
   useEffect(() => setMounted(true), []);
   const megaRef = useRef<HTMLDivElement>(null);
@@ -173,11 +175,21 @@ export default function Header() {
             {/* Wishlist */}
             <Link href="/wishlist" className="header-icon-btn relative" title="المفضلة">
               <Heart size={20} />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-scale-up">
+                  {wishlistCount}
+                </span>
+              )}
             </Link>
 
             {/* Cart */}
             <Link href="/cart" className="header-icon-btn relative" title="سلة التسوق">
               <ShoppingCart size={20} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -left-1 w-5 h-5 bg-[var(--accent)] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-scale-up">
+                  {cartCount}
+                </span>
+              )}
             </Link>
 
             {/* Mobile Menu Toggle */}

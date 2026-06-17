@@ -1,26 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Heart, Trash2, ShoppingCart } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { getJson, postJson } from '@/lib/client/api';
-import { toast } from 'sonner';
-
-interface WishlistItem {
-  id: string;
-  product: {
-    id: string;
-    name: string;
-    nameAr: string | null;
-    slug: string;
-    price: number | string;
-    compareAtPrice: number | string | null;
-    stock: number;
-    images: { url: string; alt: string | null }[];
-    brand: { name: string } | null;
-  };
-}
+import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
 
 function formatPrice(price: number | string): string {
   const num = typeof price === 'string' ? parseFloat(price) : price;
@@ -28,47 +11,12 @@ function formatPrice(price: number | string): string {
 }
 
 export default function WishlistPage() {
-  const { isAuthenticated, isLoading, accessToken } = useAuth();
-  const [items, setItems] = useState<WishlistItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { wishlist, toggleWishlist, addToCart, isLoading: providerLoading } = useCartWishlist();
 
-  const fetchWishlist = useCallback(async () => {
-    if (!accessToken) return;
-    const res = await getJson<WishlistItem[]>('/api/v1/wishlist', { token: accessToken });
-    if (res.success) {
-      setItems(res.data as WishlistItem[]);
-    }
-    setLoading(false);
-  }, [accessToken]);
+  const loading = authLoading || providerLoading;
 
-  useEffect(() => {
-    if (isAuthenticated && accessToken) {
-      fetchWishlist();
-    } else if (!isLoading) {
-      setLoading(false);
-    }
-  }, [isAuthenticated, isLoading, accessToken, fetchWishlist]);
-
-  const removeFromWishlist = async (productId: string) => {
-    if (!accessToken) return;
-    const res = await postJson('/api/v1/wishlist', { productId }, { token: accessToken });
-    if (res.success) {
-      setItems(prev => prev.filter(item => item.product.id !== productId));
-      toast.success('تم الحذف من المفضلة');
-    }
-  };
-
-  const addToCart = async (productId: string) => {
-    if (!accessToken) return;
-    const res = await postJson('/api/v1/cart', { productId, quantity: 1 }, { token: accessToken });
-    if (res.success) {
-      toast.success('تمت الإضافة إلى السلة');
-    } else {
-      toast.error('حدث خطأ');
-    }
-  };
-
-  if (isLoading || loading) {
+  if (loading) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <div className="animate-pulse">
@@ -92,7 +40,7 @@ export default function WishlistPage() {
     );
   }
 
-  if (items.length === 0) {
+  if (wishlist.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <Heart size={48} className="mx-auto text-muted-foreground/30 mb-4" />
@@ -107,10 +55,10 @@ export default function WishlistPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">المفضلة ({items.length})</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">المفضلة ({wishlist.length})</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {items.map(item => {
+        {wishlist.map(item => {
           const price = typeof item.product.price === 'string' ? parseFloat(item.product.price) : item.product.price;
           const compareAt = item.product.compareAtPrice
             ? (typeof item.product.compareAtPrice === 'string' ? parseFloat(item.product.compareAtPrice) : item.product.compareAtPrice)
@@ -156,7 +104,7 @@ export default function WishlistPage() {
                   {item.product.stock === 0 ? 'نفذ' : 'أضف للسلة'}
                 </button>
                 <button
-                  onClick={() => removeFromWishlist(item.product.id)}
+                  onClick={() => toggleWishlist(item.product.id)}
                   className="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition"
                   title="حذف من المفضلة"
                 >

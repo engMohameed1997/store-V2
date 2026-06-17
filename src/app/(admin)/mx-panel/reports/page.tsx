@@ -111,13 +111,13 @@ export default function ReportsPage() {
 
   const opts = { token: accessToken! };
 
-  const fetchReports = useCallback(async () => {
+  const fetchReports = useCallback(async (isManual = false) => {
     if (!accessToken) return;
     setLoading(true);
     try {
       const [result, pageViewsResult] = await Promise.all([
-        getJson<ReportsData>(`${ADMIN_BASE}/analytics/reports`, opts),
-        getJson<{ path: string; count: number }[]>(`${ADMIN_BASE}/analytics/page-views`, opts),
+        getJson<ReportsData>(`${ADMIN_BASE}/analytics/reports?refresh=true`, opts),
+        getJson<{ path: string; count: number }[]>(`${ADMIN_BASE}/analytics/page-views${isManual ? '?refresh=true' : ''}`, opts),
       ]);
 
       if (result.success && result.data) {
@@ -157,9 +157,17 @@ export default function ReportsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <BarChart3 size={24} className="text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">التقارير والتحليلات</h1>
+      <div className="flex items-center justify-between mb-6 gap-4">
+        <div className="flex items-center gap-3">
+          <BarChart3 size={24} className="text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">التقارير والتحليلات</h1>
+        </div>
+        <button
+          onClick={() => fetchReports(true)}
+          className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary-foreground dark:hover:bg-primary/30 rounded-xl text-xs font-semibold transition"
+        >
+          تحديث البيانات
+        </button>
       </div>
 
       {/* Order Completion Rate + Summary Cards */}

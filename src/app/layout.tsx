@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cairo, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { CartWishlistProvider } from "@/components/providers/cart-wishlist-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -37,8 +38,10 @@ export default function RootLayout({
       <body className={`${cairo.className} min-h-full flex flex-col`}>
         <ThemeProvider>
           <AuthProvider>
-            {children}
-            <Toaster position="top-center" richColors closeButton />
+            <CartWishlistProvider>
+              {children}
+              <Toaster position="top-center" richColors closeButton />
+            </CartWishlistProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
