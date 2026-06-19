@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, FileText, ChevronLeft, Plus, Loader2, CheckCircle2, X, Tag } from 'lucide-react';
+import { MapPin, CreditCard, FileText, ChevronLeft, Plus, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson, postJson } from '@/lib/client/api';
 import { toast } from 'sonner';
@@ -68,8 +68,6 @@ export default function CheckoutPage() {
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState('CASH_ON_DELIVERY');
   const [couponCode, setCouponCode] = useState('');
-  const [validCoupon, setValidCoupon] = useState<{ discountAmount: number; message: string } | null>(null);
-  const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [notes, setNotes] = useState('');
 
   const fetchData = useCallback(async () => {

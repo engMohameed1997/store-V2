@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { adminRoute } from "@/lib/api/route-handler";
-import { apiSuccess, apiCreated } from "@/lib/api/response";
+import { apiSuccess, apiCreated, apiError } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { TicketService } from "@/lib/services/ticket.service";
 import { TicketStatus } from "@/lib/types/ticket";
@@ -27,7 +27,7 @@ export const POST = adminRoute(async (request: NextRequest, context) => {
   const userId = context.user?.userId;
 
   if (!userId) {
-    return apiSuccess({ success: false, error: "Unauthorized" }, 401);
+    return apiError("UNAUTHORIZED", "Unauthorized", 401);
   }
 
   const message = await TicketService.reply(id, userId, input.body, true);

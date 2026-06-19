@@ -1,0 +1,24 @@
+=== ChatWidget.tsx ===
+379 /home/mohameed/Desktop/storeApp/src/components/ChatWidget.tsx
+=== lib/chatbot ===
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/types.ts
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/intent-classifier.ts
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/state-machine.ts
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/response-generator.ts
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/index.ts
+=== all chat references in src ===
+/home/mohameed/Desktop/storeApp/src/app/layout.tsx
+/home/mohameed/Desktop/storeApp/src/app/api/chat/route.ts
+/home/mohameed/Desktop/storeApp/src/app/api/chat/admin-reply/route.ts
+/home/mohameed/Desktop/storeApp/src/app/admin/page.tsx
+/home/mohameed/Desktop/storeApp/src/app/admin/layout.tsx
+/home/mohameed/Desktop/storeApp/src/app/admin/chats/page.tsx
+/home/mohameed/Desktop/storeApp/src/app/admin/chats/ChatSessionDetail.tsx
+/home/mohameed/Desktop/storeApp/src/app/admin/chats/ReplyToChat.tsx
+/home/mohameed/Desktop/storeApp/src/components/ChatWidget.tsx
+/home/mohameed/Desktop/storeApp/src/lib/rate-limit.ts
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/types.ts
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/state-machine.ts
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/response-generator.ts
+/home/mohameed/Desktop/storeApp/src/lib/chatbot/index.ts
+/home/mohameed/Desktop/storeApp/src/actions/admin.actions.ts

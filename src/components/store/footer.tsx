@@ -14,7 +14,7 @@ export default function Footer() {
       .then(data => {
         if (data.success) setCategories(data.data);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   return (
@@ -55,7 +55,7 @@ export default function Footer() {
               {categories.slice(0, 8).map(cat => (
                 <li key={cat.id}>
                   <Link
-                    href={`/category/${cat.slug}`}
+                    href={`/category/${cat.nameAr || cat.name}`}
                     className="text-white/70 hover:text-[var(--accent)] transition text-sm"
                   >
                     {cat.name}

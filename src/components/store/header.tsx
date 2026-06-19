@@ -301,7 +301,7 @@ export default function Header() {
               {categories.map(cat => (
                 <Link
                   key={cat.id}
-                  href={`/category/${cat.slug}`}
+                  href={`/category/${cat.nameAr || cat.name} `}
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/5 transition"
                 >
