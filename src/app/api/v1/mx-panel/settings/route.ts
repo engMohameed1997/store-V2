@@ -5,7 +5,38 @@ import { validateBody } from "@/lib/api/validate";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const updateSettingsSchema = z.record(z.string(), z.unknown());
+const ALLOWED_SETTING_KEYS = [
+  "storeName",
+  "storeNameAr",
+  "storeEmail",
+  "storePhone",
+  "storeAddress",
+  "storeLogo",
+  "storeFavicon",
+  "whatsappNumber",
+  "whatsappGreeting",
+  "whatsappGreetingAr",
+  "facebookUrl",
+  "instagramUrl",
+  "twitterUrl",
+  "tiktokUrl",
+  "metaTitle",
+  "metaDescription",
+  "maintenanceMode",
+  "allowGuestCheckout",
+  "defaultCurrency",
+  "defaultLanguage",
+  "orderMinAmount",
+  "freeShippingThreshold",
+] as const;
+
+const settingValue = z.union([
+  z.string().max(2000),
+  z.number(),
+  z.boolean(),
+]);
+
+const updateSettingsSchema = z.record(z.enum(ALLOWED_SETTING_KEYS), settingValue);
 
 export const GET = adminRoute(async () => {
   const settings = await db.storeSetting.findMany({
@@ -24,8 +55,8 @@ export const PUT = adminRoute(async (request: NextRequest) => {
   for (const [key, value] of Object.entries(input)) {
     await db.storeSetting.upsert({
       where: { key },
-      create: { key, value: value as any, group: "general" },
-      update: { value: value as any },
+      create: { key, value: value as string | number | boolean, group: "general" },
+      update: { value: value as string | number | boolean },
     });
   }
 

@@ -1,69 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientIp } from "./auth-guard";
 import { apiError } from "./response";
-import { db } from "@/lib/db";
+import { redis } from "@/lib/redis";
 
 interface RateLimitConfig {
-  windowMs: number;
+  windowSec: number;
   maxRequests: number;
 }
 
 const RATE_LIMITS: Record<string, RateLimitConfig> = {
-  default: { windowMs: 60_000, maxRequests: 60 },
-  auth: { windowMs: 900_000, maxRequests: 10 },
-  refresh: { windowMs: 300_000, maxRequests: 30 },
-  strict: { windowMs: 60_000, maxRequests: 5 },
-  search: { windowMs: 60_000, maxRequests: 30 },
-  upload: { windowMs: 60_000, maxRequests: 10 },
+  default: { windowSec: 60, maxRequests: 60 },
+  auth: { windowSec: 900, maxRequests: 10 },
+  refresh: { windowSec: 300, maxRequests: 30 },
+  strict: { windowSec: 60, maxRequests: 5 },
+  search: { windowSec: 60, maxRequests: 30 },
+  upload: { windowSec: 60, maxRequests: 10 },
 };
-
-// Database-backed rate limiter for serverless compatibility
-// Uses a simple table to track request counts per IP/path/tier
-async function getRateLimitEntry(
-  key: string,
-  windowMs: number
-): Promise<{ count: number; resetAt: number } | null> {
-  const now = new Date();
-  const windowStart = new Date(now.getTime() - windowMs);
-
-  const entry = await db.rateLimitEntry.findFirst({
-    where: {
-      key,
-      resetAt: { gt: windowStart },
-    },
-  });
-
-  if (!entry) return null;
-
-  return { count: entry.count, resetAt: entry.resetAt.getTime() };
-}
-
-async function createRateLimitEntry(
-  key: string,
-  windowMs: number
-): Promise<void> {
-  const now = new Date();
-  const resetAt = new Date(now.getTime() + windowMs);
-
-  await db.rateLimitEntry.create({
-    data: { key, count: 1, resetAt },
-  });
-}
-
-async function incrementRateLimitEntry(key: string): Promise<void> {
-  await db.rateLimitEntry.updateMany({
-    where: { key },
-    data: { count: { increment: 1 } },
-  });
-}
-
-
-async function cleanupOldEntries(): Promise<void> {
-  const now = new Date();
-  await db.rateLimitEntry.deleteMany({
-    where: { resetAt: { lt: now } },
-  });
-}
 
 export async function checkRateLimit(
   request: NextRequest,
@@ -72,30 +24,27 @@ export async function checkRateLimit(
   const config = RATE_LIMITS[tier];
   const ip = getClientIp(request);
   const path = new URL(request.url).pathname;
-  const key = `${ip}:${path}:${tier}`;
-  const now = Date.now();
+  const key = `rl:${ip}:${path}:${tier}`;
 
-  // Periodic cleanup (run on every request but very lightweight)
-  if (Math.random() < 0.01) {
-    await cleanupOldEntries().catch(() => {});
+  // Atomic INCR: if key doesn't exist Redis creates it at 0 then increments to 1
+  const count = await redis.incr(key);
+
+  // On the first request in a new window, set the TTL
+  if (count === 1) {
+    await redis.expire(key, config.windowSec);
+  } else if (count === 2) {
+    // Safety net: if the TTL was never set (e.g. the first INCR and EXPIRE
+    // fell in a race window where the key expired between the two calls),
+    // recover by setting the TTL now. TTL of -1 means no expiry is set.
+    const ttl = await redis.ttl(key);
+    if (ttl === -1) await redis.expire(key, config.windowSec);
   }
-
-  const existing = await getRateLimitEntry(key, config.windowMs);
-
-  // If entry doesn't exist or is expired, delete old and create fresh
-  if (!existing || existing.resetAt <= now) {
-    // Remove stale entry if it exists, then create a new window
-    await db.rateLimitEntry.deleteMany({ where: { key } });
-    await createRateLimitEntry(key, config.windowMs);
-    return null; // First request in new window - always allow
-  }
-
-  // Entry exists and is still active - increment counter
-  await incrementRateLimitEntry(key);
-  const count = existing.count + 1;
 
   if (count > config.maxRequests) {
-    const retryAfter = Math.ceil((existing.resetAt - now) / 1000);
+    const ttl = await redis.ttl(key);
+    const retryAfter = ttl > 0 ? ttl : config.windowSec;
+    const resetAt = Date.now() + retryAfter * 1000;
+
     const response = apiError(
       "RATE_LIMITED",
       `Too many requests. Retry after ${retryAfter}s`,
@@ -104,7 +53,7 @@ export async function checkRateLimit(
     response.headers.set("Retry-After", String(retryAfter));
     response.headers.set("X-RateLimit-Limit", String(config.maxRequests));
     response.headers.set("X-RateLimit-Remaining", "0");
-    response.headers.set("X-RateLimit-Reset", String(existing.resetAt));
+    response.headers.set("X-RateLimit-Reset", String(resetAt));
     return response;
   }
 
@@ -118,12 +67,10 @@ export async function getRateLimitHeaders(
   const config = RATE_LIMITS[tier];
   const ip = getClientIp(request);
   const path = new URL(request.url).pathname;
-  const key = `${ip}:${path}:${tier}`;
+  const key = `rl:${ip}:${path}:${tier}`;
 
-  const existing = await getRateLimitEntry(key, config.windowMs);
-  const remaining = existing
-    ? Math.max(0, config.maxRequests - existing.count)
-    : config.maxRequests;
+  const count = await redis.get<number>(key) ?? 0;
+  const remaining = Math.max(0, config.maxRequests - count);
 
   return {
     "X-RateLimit-Limit": String(config.maxRequests),

@@ -5,15 +5,8 @@ import type { CreateProductInput, UpdateProductInput } from "@/lib/validators/pr
 import { MAX_PAGINATION_LIMIT } from "@/lib/constants/pagination";
 
 // View deduplication: prevents viewCount inflation (1 count per IP per product per hour)
-const VIEW_DEDUP_TTL_MS = 60 * 60 * 1000; // 1 hour
-const recentViews = new Map<string, number>();
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, ts] of recentViews.entries()) {
-    if (now - ts > VIEW_DEDUP_TTL_MS) recentViews.delete(key);
-  }
-}, 10 * 60 * 1000); // cleanup every 10 min
+// Uses Redis instead of in-memory Map to work correctly across multiple instances/pods.
+const VIEW_DEDUP_TTL_SEC = 60 * 60; // 1 hour
 
 const PRODUCT_INCLUDE = {
   images: { orderBy: { position: "asc" as const } },
@@ -226,10 +219,19 @@ export class ProductService {
 
     if (!product) throw Errors.notFound("Product");
 
-    // Deduplicate: only count once per IP per product per hour
-    const viewKey = `${product.id}:${clientIp || "anon"}`;
-    if (!recentViews.has(viewKey)) {
-      recentViews.set(viewKey, Date.now());
+    // Deduplicate: only count once per IP per product per hour (Redis-backed for multi-instance safety)
+    // Uses a lazy dynamic import so SSR pages work even without Redis configured (dev environment).
+    const viewKey = `view:${product.id}:${clientIp || "anon"}`;
+    let shouldCount: boolean;
+    try {
+      const { redis } = await import("@/lib/redis");
+      const isNewView = await redis.set(viewKey, "1", { nx: true, ex: VIEW_DEDUP_TTL_SEC });
+      shouldCount = !!isNewView;
+    } catch {
+      // Redis not available (e.g. dev without env vars) — always count
+      shouldCount = true;
+    }
+    if (shouldCount) {
       await db.product.update({
         where: { id: product.id },
         data: { viewCount: { increment: 1 } },

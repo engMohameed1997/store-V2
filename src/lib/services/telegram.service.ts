@@ -1,18 +1,12 @@
-import { db } from "@/lib/db";
-
 /**
  * TelegramService — sends notifications to a Telegram chat/group
- * via the Bot API. Reads bot token & chat ID from StoreSettings.
+ * via the Bot API. Reads bot token & chat ID from env vars.
  */
 export class TelegramService {
-  private static async getConfig(): Promise<{ botToken: string; chatId: string } | null> {
-    const [tokenSetting, chatSetting] = await Promise.all([
-      db.storeSetting.findUnique({ where: { key: "telegramBotToken" } }),
-      db.storeSetting.findUnique({ where: { key: "telegramChatId" } }),
-    ]);
-
-    const botToken = tokenSetting?.value as string | undefined;
-    const chatId = chatSetting?.value as string | undefined;
+  private static getConfig(): { botToken: string; chatId: string } | null {
+    // Both credentials are read from env vars — never stored in the database
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
 
     if (!botToken || !chatId) return null;
     return { botToken, chatId };
@@ -23,7 +17,7 @@ export class TelegramService {
    */
   static async sendMessage(text: string): Promise<boolean> {
     try {
-      const config = await this.getConfig();
+      const config = this.getConfig();
       if (!config) return false;
 
       const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CleanupService } from "@/lib/services/cleanup.service";
 import { checkRateLimit } from "@/lib/api/rate-limiter";
+import { logger } from "@/lib/logger";
 
 function verifyCronAuth(request: NextRequest): boolean {
   const cronSecret = process.env.CRON_SECRET;
@@ -43,7 +44,7 @@ async function handleCleanup(request: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error) {
-    console.error("[CRON] Cleanup failed:", error);
+    logger.error("[CRON] Cleanup failed", { error });
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "Cleanup job failed" } },
       { status: 500 }

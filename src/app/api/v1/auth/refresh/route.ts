@@ -4,6 +4,7 @@ import { apiSuccess } from "@/lib/api/response";
 import { AuthService } from "@/lib/services/auth.service";
 import { getClientIp, getUserAgent } from "@/lib/api/auth-guard";
 import { AppError } from "@/lib/api/errors";
+import { REFRESH_TOKEN_COOKIE_MAX_AGE } from "@/lib/api/jwt";
 
 export const POST = publicRoute(async (request: NextRequest) => {
   const refreshToken = request.cookies.get("refreshToken")?.value;
@@ -28,7 +29,7 @@ export const POST = publicRoute(async (request: NextRequest) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE,
     });
 
     return response;

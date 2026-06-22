@@ -5,6 +5,7 @@ import { MAX_PAGINATION_LIMIT } from "@/lib/constants/pagination";
 import crypto from "crypto";
 import { WarrantyService } from "./warranty.service";
 import { TelegramService } from "./telegram.service";
+import { logger } from "@/lib/logger";
 
 const ORDER_INCLUDE = {
   items: {
@@ -409,7 +410,11 @@ export class OrderService {
     // Validate totalPrice consistency (log warnings for data integrity)
     for (const item of order.items) {
       if (!validateOrderItemTotalPrice(item as any)) {
-        console.warn(`OrderItem ${item.id} has inconsistent totalPrice: expected ${Number(item.price) * item.quantity}, got ${Number(item.totalPrice)}`);
+        logger.warn("OrderItem has inconsistent totalPrice", {
+          orderItemId: item.id,
+          expected: Number(item.price) * item.quantity,
+          actual: Number(item.totalPrice),
+        });
       }
     }
 

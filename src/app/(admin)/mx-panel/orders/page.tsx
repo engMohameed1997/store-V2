@@ -192,14 +192,14 @@ export default function OrdersPage() {
                       <td className="px-4 py-3 text-foreground">
                         {order.user ? `${order.user.firstName} ${order.user.lastName}` : '—'}
                       </td>
-                      <td className="px-4 py-3 text-foreground text-xs" dir="ltr">
+                      <td className="px-4 py-3 text-foreground text-xs">
                         {order.user?.phone || order.shippingAddress?.phone || '—'}
                       </td>
                       <td className="px-4 py-3 text-foreground text-xs max-w-[150px] truncate">
                         {order.shippingAddress?.city ? `${order.shippingAddress.city}${order.shippingAddress?.state ? `, ${order.shippingAddress.state}` : ''}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-foreground font-medium">
-                        {formatPrice(order.totalAmount)} د.ع
+                        {formatPrice(order.totalAmount)}   د.ع
                       </td>
                       <td className="px-4 py-3">
                         <select

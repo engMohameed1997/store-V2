@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
+import { logger } from "@/lib/logger";
 import fs from "fs/promises";
 import path from "path";
 
@@ -31,7 +32,7 @@ export class MediaService {
       const filePath = path.join(process.cwd(), "public", asset.url);
       await fs.unlink(filePath);
     } catch (err) {
-      console.error(`Failed to delete physical file: public${asset.url}`, err);
+      logger.error("Failed to delete physical file", { path: `public${asset.url}`, error: err });
     }
   }
 }

@@ -7,7 +7,7 @@ const REPORTS_CACHE_KEY = "analytics:reports";
 export class AnalyticsService {
   static async getDashboard(skipCache = false) {
     if (!skipCache) {
-      const cached = cache.get<DashboardData>(DASHBOARD_CACHE_KEY);
+      const cached = await cache.get<DashboardData>(DASHBOARD_CACHE_KEY);
       if (cached) return cached;
     }
 
@@ -108,7 +108,7 @@ export class AnalyticsService {
 
   static async getReports(skipCache = false) {
     if (!skipCache) {
-      const cached = cache.get<ReportsData>(REPORTS_CACHE_KEY);
+      const cached = await cache.get<ReportsData>(REPORTS_CACHE_KEY);
       if (cached) return cached;
     }
 

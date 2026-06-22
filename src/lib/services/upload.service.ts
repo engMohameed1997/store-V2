@@ -1,8 +1,14 @@
-import sharp from "sharp";
+import sharp, { type Metadata as SharpMetadata } from "sharp";
 import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import ffmpegPath from "ffmpeg-static";
 import { Errors } from "@/lib/api/errors";
+import { logger } from "@/lib/logger";
+
+const execFileAsync = promisify(execFile);
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
 export const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB per video
@@ -87,16 +93,16 @@ export class UploadService {
     // Reads actual binary signature — not the client-supplied Content-Type
     const detectedMime = detectMimeFromBytes(buffer);
     if (!detectedMime) {
-      console.warn(`[Upload] REJECTED invalid file type | by=${byTag}`);
+      logger.warn("Upload rejected: invalid file type", { by: byTag });
       throw Errors.badRequest("Invalid file: only JPEG, PNG, and WEBP images are accepted");
     }
 
     // ── 2. Header Metadata Check (no full decode — safe against decompression bombs) ─
-    let rawMeta: sharp.Metadata;
+    let rawMeta: SharpMetadata;
     try {
       rawMeta = await sharp(buffer).metadata();
     } catch {
-      console.warn(`[Upload] REJECTED corrupt image | mime=${detectedMime} | by=${byTag}`);
+      logger.warn("Upload rejected: corrupt image", { mime: detectedMime, by: byTag });
       throw Errors.badRequest("Image is corrupt or cannot be parsed");
     }
 
@@ -130,7 +136,7 @@ export class UploadService {
         outputMime = "image/jpeg";
       }
     } catch {
-      console.warn(`[Upload] Re-encode failed | mime=${detectedMime} | by=${byTag}`);
+      logger.warn("Upload re-encode failed", { mime: detectedMime, by: byTag });
       throw Errors.badRequest("Image processing failed — file may contain unsupported content");
     }
 
@@ -153,9 +159,7 @@ export class UploadService {
 
     const url = `/uploads/${sanitizedFolder}/${filename}`;
 
-    console.info(
-      `[Upload] Saved: ${url} | ${width}×${height} | ${processedBuffer.length}B | mime=${outputMime} | by=${byTag}`
-    );
+    logger.info("Upload saved", { url, width, height, size: processedBuffer.length, mime: outputMime, by: byTag });
 
     return { url, filename, size: processedBuffer.length, mimeType: outputMime, width, height };
   }
@@ -169,8 +173,12 @@ export class UploadService {
 
     const detectedMime = detectVideoMimeFromBytes(buffer);
     if (!detectedMime) {
-      console.warn(`[Upload] REJECTED invalid video type | by=${byTag}`);
+      logger.warn("Upload rejected: invalid video type", { by: byTag });
       throw Errors.badRequest("Invalid file: only MP4 and WebM videos are accepted");
+    }
+
+    if (!ffmpegPath) {
+      throw Errors.badRequest("Video processing is not available on this server");
     }
 
     const outputExt = detectedMime === "video/mp4" ? "mp4" : "webm";
@@ -179,17 +187,42 @@ export class UploadService {
     const folderPath = path.join(UPLOAD_BASE_DIR, sanitizedFolder);
     await fs.mkdir(folderPath, { recursive: true });
 
+    const tmpId = crypto.randomUUID();
+    const tmpInput = path.join(folderPath, `tmp_in_${tmpId}.${outputExt}`);
     const filename = `${crypto.randomUUID()}.${outputExt}`;
     const filePath = path.join(folderPath, filename);
 
-    await fs.writeFile(filePath, buffer, { flag: "wx" });
+    try {
+      // Write raw buffer to a temp file for ffmpeg to read
+      await fs.writeFile(tmpInput, buffer, { flag: "wx" });
 
-    const url = `/uploads/${sanitizedFolder}/${filename}`;
+      // Re-encode stripping all metadata: -map_metadata -1 removes all global metadata
+      // -c:v copy -c:a copy keeps original streams (no quality loss, fast)
+      await execFileAsync(ffmpegPath, [
+        "-i", tmpInput,
+        "-map_metadata", "-1",
+        "-c:v", "copy",
+        "-c:a", "copy",
+        "-movflags", "+faststart",
+        "-y",
+        filePath,
+      ]);
 
-    console.info(
-      `[Upload] Video saved: ${url} | ${buffer.length}B | mime=${detectedMime} | by=${byTag}`
-    );
+      // Read back the processed file to get its size
+      const stat = await fs.stat(filePath);
+      const url = `/uploads/${sanitizedFolder}/${filename}`;
 
-    return { url, filename, size: buffer.length, mimeType: detectedMime, width: 0, height: 0 };
+      logger.info("Video upload saved", { url, size: stat.size, mime: detectedMime, by: byTag });
+
+      return { url, filename, size: stat.size, mimeType: detectedMime, width: 0, height: 0 };
+    } catch (err) {
+      logger.error("Video processing failed", { by: byTag, error: String(err) });
+      // Clean up output file if it was partially written
+      await fs.unlink(filePath).catch(() => {});
+      throw Errors.badRequest("Video processing failed — the file may be corrupt or unsupported");
+    } finally {
+      // Always remove the temp input file
+      await fs.unlink(tmpInput).catch(() => {});
+    }
   }
 }

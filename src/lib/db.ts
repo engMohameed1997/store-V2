@@ -7,7 +7,14 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 20,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+    statement_timeout: 10_000,
+    idle_in_transaction_session_timeout: 30_000,
+  });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }

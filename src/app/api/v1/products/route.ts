@@ -7,6 +7,7 @@ import { validateQuery } from "@/lib/api/validate";
 import { sanitizeSearchQuery } from "@/lib/api/sanitize";
 import { optionalAuth } from "@/lib/api/auth-guard";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export const GET = publicRoute(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
@@ -21,7 +22,7 @@ export const GET = publicRoute(async (request: NextRequest) => {
         query: sanitizedQuery.trim().toLowerCase(),
         userId: authUser?.userId || null,
       }
-    }).catch(err => console.error("Failed to log search history:", err));
+    }).catch(err => logger.warn("Failed to log search history", { error: err }));
   }
 
   const result = await ProductService.list({

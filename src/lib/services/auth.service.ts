@@ -200,8 +200,8 @@ export class AuthService {
       select: { id: true, role: true, status: true, email: true, phone: true, firstName: true, lastName: true, avatar: true },
     });
 
-    if (!user || user.status === "BANNED") {
-      throw Errors.unauthorized("User not found or banned");
+    if (!user || user.status === "BANNED" || user.status === "SUSPENDED") {
+      throw Errors.unauthorized("User not found, banned or suspended");
     }
 
     await db.apiToken.update({

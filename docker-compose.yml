@@ -12,8 +12,6 @@ services:
       POSTGRES_USER: ${DB_USER:-store_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-store_password123}
       POSTGRES_DB: ${DB_NAME:-store_db}
-    ports:
-      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -65,6 +63,14 @@ services:
       
       # Cron
       CRON_SECRET: ${CRON_SECRET}
+
+      # Upstash Redis (Rate Limiting & Cache)
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+
+      # Telegram Bot (optional)
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     networks:
       - store-network
 

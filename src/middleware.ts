@@ -63,8 +63,23 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
   ...(process.env.NODE_ENV === "production"
     ? {
-        "Content-Security-Policy":
-          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self';",
+        // Note: 'unsafe-inline' in script-src is required by Next.js for its inline
+        // hydration scripts (__NEXT_DATA__). Full removal requires nonce-based CSP.
+        "Content-Security-Policy": [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob: https:",
+          "font-src 'self' data:",
+          "media-src 'self' blob:",
+          "worker-src 'self' blob:",
+          "connect-src 'self' https://api.telegram.org",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+          "frame-ancestors 'none'",
+          "upgrade-insecure-requests",
+        ].join("; "),
       }
     : {}),
 };
@@ -147,19 +162,24 @@ export function middleware(request: NextRequest) {
     if (authRedirect) return authRedirect;
   }
 
-  const response = NextResponse.next();
+  // Generate request ID before building response so it can be forwarded to the handler
+  const requestId = isApiRoute(request.nextUrl.pathname) ? crypto.randomUUID() : undefined;
+
+  // Forward requestId as an incoming request header so route handlers can read it
+  const requestHeaders = new Headers(request.headers);
+  if (requestId) requestHeaders.set("x-request-id", requestId);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
 
-  if (isApiRoute(request.nextUrl.pathname)) {
+  if (requestId) {
     handleCors(request, response);
 
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
     response.headers.set("Pragma", "no-cache");
-
-    const requestId = crypto.randomUUID();
     response.headers.set("X-Request-ID", requestId);
   }
 

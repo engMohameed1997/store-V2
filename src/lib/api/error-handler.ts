@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { AppError } from "./errors";
 import { apiError } from "./response";
 import { ZodError } from "zod";
+import { logger } from "@/lib/logger";
 
-export function handleApiError(error: unknown): NextResponse {
+export function handleApiError(error: unknown, requestId?: string): NextResponse {
   if (error instanceof AppError) {
     return apiError(error.code, error.message, error.statusCode, error.details);
   }
@@ -30,7 +31,12 @@ export function handleApiError(error: unknown): NextResponse {
     return apiError("NOT_FOUND", "Resource not found", 404);
   }
 
-  console.error("[API_ERROR]", error);
+  logger.error("Unhandled API error", {
+    requestId,
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+
   return apiError(
     "INTERNAL_ERROR",
     "An unexpected error occurred",

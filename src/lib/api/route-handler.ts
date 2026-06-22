@@ -46,7 +46,8 @@ export function createHandler(handler: HandlerFn, options: RouteOptions = {}) {
 
       return await handler(request, { ...context, user });
     } catch (error) {
-      return handleApiError(error);
+      const requestId = request.headers.get("x-request-id") ?? undefined;
+      return handleApiError(error, requestId);
     }
   };
 }

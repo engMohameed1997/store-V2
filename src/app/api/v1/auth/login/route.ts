@@ -5,6 +5,7 @@ import { apiSuccess } from "@/lib/api/response";
 import { loginSchema } from "@/lib/validators/auth";
 import { AuthService } from "@/lib/services/auth.service";
 import { getClientIp, getUserAgent } from "@/lib/api/auth-guard";
+import { REFRESH_TOKEN_COOKIE_MAX_AGE } from "@/lib/api/jwt";
 
 export const POST = publicRoute(async (request: NextRequest) => {
   const input = await validateBody(request, loginSchema);
@@ -28,7 +29,7 @@ export const POST = publicRoute(async (request: NextRequest) => {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE,
   });
 
   return response;
