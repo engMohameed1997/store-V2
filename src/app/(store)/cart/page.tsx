@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { ShoppingCart, Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { getJson, postJson, deleteJson, putJson } from '@/lib/client/api';
+import { getJson, deleteJson, putJson } from '@/lib/client/api';
 import { toast } from 'sonner';
 
 interface CartItem {
@@ -37,30 +37,30 @@ function formatPrice(price: number | string): string {
 }
 
 export default function CartPage() {
-  const { isAuthenticated, isLoading, accessToken } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchCart = useCallback(async () => {
-    if (!accessToken) return;
-    const res = await getJson<Cart>('/api/v1/cart', { token: accessToken });
+    if (!isAuthenticated) return;
+    const res = await getJson<Cart>('/api/v1/cart');
     if (res.success) {
       setCart(res.data as Cart);
     }
     setLoading(false);
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (isAuthenticated && accessToken) {
+    if (isAuthenticated) {
       fetchCart();
     } else if (!isLoading) {
       setLoading(false);
     }
-  }, [isAuthenticated, isLoading, accessToken, fetchCart]);
+  }, [isAuthenticated, isLoading, fetchCart]);
 
   const updateQuantity = async (itemId: string, quantity: number) => {
-    if (!accessToken) return;
-    const res = await putJson(`/api/v1/cart/${itemId}`, { quantity }, { token: accessToken });
+    if (!isAuthenticated) return;
+    const res = await putJson(`/api/v1/cart/${itemId}`, { quantity });
     if (res.success) {
       fetchCart();
     } else {
@@ -69,8 +69,8 @@ export default function CartPage() {
   };
 
   const removeItem = async (itemId: string) => {
-    if (!accessToken) return;
-    const res = await deleteJson(`/api/v1/cart/${itemId}`, { token: accessToken });
+    if (!isAuthenticated) return;
+    const res = await deleteJson(`/api/v1/cart/${itemId}`);
     if (res.success) {
       toast.success('تم الحذف من السلة');
       fetchCart();
@@ -80,8 +80,8 @@ export default function CartPage() {
   };
 
   const clearCart = async () => {
-    if (!accessToken) return;
-    const res = await deleteJson('/api/v1/cart', { token: accessToken });
+    if (!isAuthenticated) return;
+    const res = await deleteJson('/api/v1/cart');
     if (res.success) {
       setCart(null);
       toast.success('تم تفريغ السلة');

@@ -5,7 +5,7 @@ import { apiSuccess } from "@/lib/api/response";
 import { loginSchema } from "@/lib/validators/auth";
 import { AuthService } from "@/lib/services/auth.service";
 import { getClientIp, getUserAgent } from "@/lib/api/auth-guard";
-import { REFRESH_TOKEN_COOKIE_MAX_AGE } from "@/lib/api/jwt";
+import { REFRESH_TOKEN_COOKIE_MAX_AGE, ACCESS_TOKEN_COOKIE_MAX_AGE } from "@/lib/api/jwt";
 
 export const POST = publicRoute(async (request: NextRequest) => {
   const input = await validateBody(request, loginSchema);
@@ -15,20 +15,23 @@ export const POST = publicRoute(async (request: NextRequest) => {
     userAgent: getUserAgent(request),
   });
 
-  const response = apiSuccess(
-    {
-      accessToken: result.accessToken,
-      user: result.user,
-    },
-    "Login successful"
-  );
+  const response = apiSuccess({ user: result.user }, "Login successful");
 
-  // Set refresh token in HttpOnly cookie
+  // Access token: HttpOnly cookie — never exposed to JavaScript
+  response.cookies.set("accessToken", result.accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: ACCESS_TOKEN_COOKIE_MAX_AGE,
+  });
+
+  // Refresh token: HttpOnly cookie — used to rotate access tokens
   response.cookies.set("refreshToken", result.refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    sameSite: "strict",
+    path: "/api/v1/auth",
     maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE,
   });
 

@@ -36,14 +36,13 @@ export interface ResetPasswordPayload {
 export interface AuthUser {
   id: string;
   email?: string;
-  phone?: string;
   firstName: string;
   lastName: string;
   role: string;
+  avatar?: string | null;
 }
 
 export interface LoginResponse {
-  accessToken: string;
   user: AuthUser;
 }
 
@@ -80,11 +79,11 @@ export const authClient = {
     return postJson(`${AUTH_BASE}/resend-otp`, { phone });
   },
 
-  refresh(): Promise<ApiResult<{ accessToken: string; user: AuthUser }>> {
-    return postJson<{ accessToken: string; user: AuthUser }>(`${AUTH_BASE}/refresh`);
+  refresh(): Promise<ApiResult<{ user: AuthUser }>> {
+    return postJson<{ user: AuthUser }>(`${AUTH_BASE}/refresh`);
   },
 
-  logout(token: string): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/logout`, undefined, { token });
+  logout(): Promise<ApiResult> {
+    return postJson(`${AUTH_BASE}/logout`);
   },
 };

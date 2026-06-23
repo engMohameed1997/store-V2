@@ -103,16 +103,16 @@ function formatPrice(price: number | string): string {
 }
 
 export default function ReportsPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [data, setData] = useState<ReportsData | null>(null);
   const [pageViews, setPageViews] = useState<{ path: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const opts = { token: accessToken! };
+  const opts = {};
 
   const fetchReports = useCallback(async (isManual = false) => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoading(true);
     try {
       const [result, pageViewsResult] = await Promise.all([
@@ -131,7 +131,7 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchReports();

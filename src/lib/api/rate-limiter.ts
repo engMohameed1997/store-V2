@@ -15,6 +15,9 @@ const RATE_LIMITS: Record<string, RateLimitConfig> = {
   strict: { windowSec: 60, maxRequests: 5 },
   search: { windowSec: 60, maxRequests: 30 },
   upload: { windowSec: 60, maxRequests: 10 },
+  chat_guest: { windowSec: 60, maxRequests: 5 },
+  chat_user: { windowSec: 60, maxRequests: 15 },
+  chat_daily: { windowSec: 86400, maxRequests: 100 },
 };
 
 export async function checkRateLimit(
@@ -27,7 +30,12 @@ export async function checkRateLimit(
   const key = `rl:${ip}:${path}:${tier}`;
 
   // Atomic INCR: if key doesn't exist Redis creates it at 0 then increments to 1
-  const count = await redis.incr(key);
+  let count: number;
+  try {
+    count = await redis.incr(key);
+  } catch {
+    return null;
+  }
 
   // On the first request in a new window, set the TTL
   if (count === 1) {

@@ -60,7 +60,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,10 +74,10 @@ export default function DashboardPage() {
   const [sendingNotif, setSendingNotif] = useState(false);
   const [notifSuccess, setNotifSuccess] = useState(false);
 
-  const opts = { token: accessToken! };
+  const opts = {};
 
   const fetchDashboardData = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoading(true);
     setError('');
     try {
@@ -98,7 +98,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken || sendingNotif) return;
+    if (!isAuthenticated || sendingNotif) return;
     if (!notifTitle.trim() || !notifBody.trim()) return;
 
     setSendingNotif(true);

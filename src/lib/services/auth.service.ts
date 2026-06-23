@@ -105,7 +105,11 @@ export class AuthService {
         : { phone: lookupIdentifier },
     });
 
-    if (!user) throw Errors.invalidCredentials();
+    if (!user) {
+      // Constant-time dummy compare to prevent user enumeration via timing
+      await bcrypt.compare(input.password, "$2b$12$invalidhashXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+      throw Errors.invalidCredentials();
+    }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       throw Errors.accountLocked(user.lockedUntil);
@@ -167,7 +171,6 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        phone: user.phone,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
@@ -220,7 +223,6 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        phone: user.phone,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,

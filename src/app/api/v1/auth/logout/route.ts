@@ -12,7 +12,7 @@ export const POST = protectedRoute(async (request: NextRequest) => {
 
   const response = apiSuccess(null, "Logged out successfully");
 
-  // Clear the refresh token cookie
+  response.cookies.delete("accessToken");
   response.cookies.delete("refreshToken");
 
   return response;

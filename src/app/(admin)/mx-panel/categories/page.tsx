@@ -15,13 +15,11 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
-import { useAuth } from '@/components/providers/auth-provider';
 import { uploadFile } from '@/lib/client/api';
 import type { AdminCategory, CreateCategoryInput, UpdateCategoryInput } from '@/lib/client/admin';
 
 export default function CategoriesPage() {
   const client = useAdminClient();
-  const { accessToken } = useAuth();
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -35,10 +33,10 @@ export default function CategoriesPage() {
   const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
 
   const handleImageUpload = async (file?: File) => {
-    if (!file || !accessToken) return;
+    if (!file) return;
     setUploadingImage(true);
     try {
-      const result = await uploadFile(file, 'categories', accessToken);
+      const result = await uploadFile(file, 'categories');
       if (result.success && result.data) {
         setFormData((prev) => ({ ...prev, image: result.data!.url }));
       } else if (!result.success) {

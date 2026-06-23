@@ -14,7 +14,6 @@ import { authClient, type AuthUser, type LoginPayload } from "@/lib/client/auth"
 
 interface AuthState {
   user: AuthUser | null;
-  accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -23,7 +22,7 @@ interface AuthContextValue extends AuthState {
   login: (payload: LoginPayload) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
-  setAuth: (user: AuthUser, token: string) => void;
+  setAuth: (user: AuthUser) => void;
   clearAuth: () => void;
 }
 
@@ -32,15 +31,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
-    accessToken: null,
     isAuthenticated: false,
     isLoading: true,
   });
 
-  const setAuth = useCallback((user: AuthUser, token: string) => {
+  const setAuth = useCallback((user: AuthUser) => {
     setState({
       user,
-      accessToken: token,
       isAuthenticated: true,
       isLoading: false,
     });
@@ -49,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearAuth = useCallback(() => {
     setState({
       user: null,
-      accessToken: null,
       isAuthenticated: false,
       isLoading: false,
     });
@@ -65,10 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const promise = (async () => {
       const result = await authClient.refresh();
-      if (result.success && result.data?.accessToken && result.data?.user) {
+      if (result.success && result.data?.user) {
         setState({
           user: result.data.user,
-          accessToken: result.data.accessToken,
           isAuthenticated: true,
           isLoading: false,
         });
@@ -95,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (payload: LoginPayload) => {
       const result = await authClient.login(payload);
       if (result.success && result.data) {
-        setAuth(result.data.user, result.data.accessToken);
+        setAuth(result.data.user);
         return { success: true };
       }
       return {
@@ -107,11 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    if (state.accessToken) {
-      await authClient.logout(state.accessToken);
-    }
+    await authClient.logout();
     clearAuth();
-  }, [state.accessToken, clearAuth]);
+  }, [clearAuth]);
 
   // Try to refresh token on mount (session recovery)
   // useRef prevents double-execution in React strict mode

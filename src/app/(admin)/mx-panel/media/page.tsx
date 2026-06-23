@@ -28,7 +28,7 @@ interface MediaAsset {
 }
 
 export default function MediaPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,10 +37,10 @@ export default function MediaPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const opts = { token: accessToken! };
+  const opts = {};
 
   const fetchAssets = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoading(true);
     setError('');
     try {
@@ -53,14 +53,14 @@ export default function MediaPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchAssets();
   }, [fetchAssets]);
 
   const handleUpload = async (file?: File) => {
-    if (!file || !accessToken) return;
+    if (!file || !isAuthenticated) return;
     setUploading(true);
     
     const formData = new FormData();
@@ -69,9 +69,7 @@ export default function MediaPage() {
     try {
       const response = await fetch(`${ADMIN_BASE}/media`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        credentials: 'include',
         body: formData,
       });
       const result = await response.json();
@@ -90,7 +88,7 @@ export default function MediaPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!accessToken || deletingId) return;
+    if (!isAuthenticated || deletingId) return;
     if (!confirm('هل أنت متأكد من حذف هذا الملف نهائياً؟')) return;
     setDeletingId(id);
     try {

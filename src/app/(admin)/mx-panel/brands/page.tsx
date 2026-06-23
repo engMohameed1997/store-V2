@@ -13,13 +13,11 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
-import { useAuth } from '@/components/providers/auth-provider';
 import { uploadFile } from '@/lib/client/api';
 import type { AdminBrand, CreateBrandInput, UpdateBrandInput } from '@/lib/client/admin';
 
 export default function BrandsPage() {
   const client = useAdminClient();
-  const { accessToken } = useAuth();
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,10 +31,10 @@ export default function BrandsPage() {
   const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
 
   const handleLogoUpload = async (file?: File) => {
-    if (!file || !accessToken) return;
+    if (!file) return;
     setUploadingLogo(true);
     try {
-      const result = await uploadFile(file, 'brands', accessToken);
+      const result = await uploadFile(file, 'brands');
       if (result.success && result.data) {
         setFormData((prev) => ({ ...prev, logo: result.data!.url }));
       } else if (!result.success) {

@@ -351,12 +351,8 @@ function buildQuery(params: Record<string, unknown>): string {
 
 // ─── Admin API Client ───────────────────────────────────────────
 
-function authed(token: string) {
-  return { token };
-}
-
-export function createAdminClient(token: string) {
-  const opts = authed(token);
+export function createAdminClient() {
+  const opts = {};
 
   return {
     // ── Products ──────────────────────────────────────────────

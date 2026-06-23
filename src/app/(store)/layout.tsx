@@ -2,6 +2,7 @@ import Header from '@/components/store/header';
 import Footer from '@/components/store/footer';
 import { WhatsAppButton } from '@/components/store/whatsapp-button';
 import PageViewTracker from '@/components/store/page-view-tracker';
+import { ChatWidget } from '@/components/store/chat/chat-widget';
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
       <Footer />
       <WhatsAppButton />
       <PageViewTracker />
+      <ChatWidget />
     </>
   );
 }

@@ -10,11 +10,13 @@ export interface AuthUser {
 }
 
 export function extractToken(request: NextRequest): string {
+  const cookieToken = request.cookies.get("accessToken")?.value;
+  if (cookieToken) return cookieToken;
+
   const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw Errors.unauthorized("Missing or invalid Authorization header");
-  }
-  return authHeader.slice(7);
+  if (authHeader?.startsWith("Bearer ")) return authHeader.slice(7);
+
+  throw Errors.unauthorized("Missing or invalid token");
 }
 
 export async function requireAuth(request: NextRequest): Promise<AuthUser> {

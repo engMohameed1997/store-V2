@@ -27,7 +27,7 @@ interface Address {
 }
 
 export default function AddressesPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -61,17 +61,17 @@ export default function AddressesPage() {
   }, [form.city, availableDistricts]);
 
   const fetchAddresses = useCallback(async () => {
-    if (!accessToken) return;
-    const res = await getJson<Address[]>('/api/v1/addresses', { token: accessToken });
+    if (!isAuthenticated) return;
+    const res = await getJson<Address[]>('/api/v1/addresses');
     if (res.success) setAddresses(res.data as Address[]);
     setLoading(false);
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   useEffect(() => { fetchAddresses(); }, [fetchAddresses]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setSaving(true);
 
     const payload = {
@@ -82,7 +82,7 @@ export default function AddressesPage() {
       landmark: form.landmark || undefined,
     };
 
-    const res = await postJson('/api/v1/addresses', payload, { token: accessToken });
+    const res = await postJson('/api/v1/addresses', payload);
     setSaving(false);
     if (res.success) {
       toast.success('تمت إضافة العنوان');
@@ -96,8 +96,8 @@ export default function AddressesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!accessToken) return;
-    const res = await deleteJson(`/api/v1/addresses/${id}`, { token: accessToken });
+    if (!isAuthenticated) return;
+    const res = await deleteJson(`/api/v1/addresses/${id}`);
     if (res.success) {
       toast.success('تم حذف العنوان');
       fetchAddresses();

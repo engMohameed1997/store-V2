@@ -56,7 +56,7 @@ function formatPrice(price: number | string): string {
 }
 
 export default function ProductDetailClient({ product }: { product: ProductDetail }) {
-  const { isAuthenticated, accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(
@@ -101,7 +101,7 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
       quantity,
     };
     if (selectedVariant) body.variantId = selectedVariant;
-    const res = await postJson('/api/v1/cart', body, { token: accessToken! });
+    const res = await postJson('/api/v1/cart', body);
     setAddingToCart(false);
     if (res.success) {
       toast.success('تمت الإضافة إلى السلة');
@@ -115,7 +115,7 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
       toast.error('يرجى تسجيل الدخول أولاً');
       return;
     }
-    const res = await postJson('/api/v1/wishlist', { productId: product.id }, { token: accessToken! });
+    const res = await postJson('/api/v1/wishlist', { productId: product.id });
     if (res.success) {
       toast.success('تمت إضافته إلى المفضلة');
     } else {

@@ -7,16 +7,23 @@ function createRedisClient(): Redis {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
-    throw new Error(
-      "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set in environment variables"
-    );
+    throw new Error("Redis is not configured");
   }
 
   return new Redis({ url, token });
 }
 
-export const redis: Redis = globalForRedis.__redis ?? createRedisClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForRedis.__redis = redis;
+function getRedis(): Redis {
+  if (globalForRedis.__redis) return globalForRedis.__redis;
+  const client = createRedisClient();
+  if (process.env.NODE_ENV !== "production") {
+    globalForRedis.__redis = client;
+  }
+  return client;
 }
+
+export const redis: Redis = new Proxy({} as Redis, {
+  get(_target, prop) {
+    return (getRedis() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});

@@ -28,9 +28,13 @@ export const POST = publicRoute(async (request: NextRequest) => {
   // path within a 30-second window to prevent DB flooding.
   const clientIp = getClientIp(request);
   const dedupKey = `pv:${clientIp}:${path.slice(0, 100)}`;
-  const isNew = await redis.set(dedupKey, "1", { nx: true, ex: 30 });
-  if (!isNew) {
-    return apiSuccess({ recorded: false });
+  try {
+    const isNew = await redis.set(dedupKey, "1", { nx: true, ex: 30 });
+    if (!isNew) {
+      return apiSuccess({ recorded: false });
+    }
+  } catch {
+    // Redis unavailable — skip deduplication
   }
 
   let userId: string | null = null;
@@ -50,4 +54,4 @@ export const POST = publicRoute(async (request: NextRequest) => {
   });
 
   return apiSuccess(pageView);
-}, "strict");
+}, "search");

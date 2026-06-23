@@ -13,13 +13,11 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
-import { useAuth } from '@/components/providers/auth-provider';
 import { uploadFile } from '@/lib/client/api';
 import type { AdminBanner, CreateBannerInput, UpdateBannerInput } from '@/lib/client/admin';
 
 export default function BannersPage() {
   const client = useAdminClient();
-  const { accessToken } = useAuth();
   const [banners, setBanners] = useState<AdminBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -112,10 +110,10 @@ export default function BannersPage() {
   const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp|mp4|webm)$/i;
 
   const handleBannerUpload = async (field: 'image' | 'mobileImage' | 'videoUrl', file?: File) => {
-    if (!file || !accessToken) return;
+    if (!file) return;
     setUploadingField(field === 'videoUrl' ? 'video' : field);
     try {
-      const result = await uploadFile(file, 'banners', accessToken);
+      const result = await uploadFile(file, 'banners');
       if (result.success && result.data) {
         setFormData((prev) => ({ ...prev, [field]: result.data!.url }));
       } else if (!result.success) {

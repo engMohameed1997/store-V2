@@ -181,8 +181,7 @@ export interface UploadResult {
 
 export async function uploadFile(
   file: File,
-  folder: string,
-  token: string
+  folder: string
 ): Promise<ApiResult<UploadResult>> {
   try {
     const formData = new FormData();
@@ -191,7 +190,6 @@ export async function uploadFile(
 
     const res = await fetch("/api/v1/uploads", {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: "include",
       body: formData,
     });

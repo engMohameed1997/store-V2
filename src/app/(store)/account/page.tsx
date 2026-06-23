@@ -19,15 +19,15 @@ interface Profile {
 }
 
 export default function AccountProfilePage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '' });
 
   useEffect(() => {
-    if (!accessToken) return;
-    getJson<Profile>('/api/v1/user/profile', { token: accessToken })
+    if (!isAuthenticated) return;
+    getJson<Profile>('/api/v1/user/profile')
       .then(res => {
         if (res.success) {
           const p = res.data as Profile;
@@ -41,16 +41,16 @@ export default function AccountProfilePage() {
         }
       })
       .finally(() => setLoading(false));
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setSaving(true);
     const res = await putJson('/api/v1/user/profile', {
       firstName: form.firstName,
       lastName: form.lastName,
-    }, { token: accessToken });
+    });
     setSaving(false);
     if (res.success) {
       toast.success('تم حفظ التغييرات');

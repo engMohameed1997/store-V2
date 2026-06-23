@@ -22,7 +22,7 @@ import { getJson, putJson } from '@/lib/client/api';
 const ADMIN_BASE = '/api/v1/mx-panel';
 
 export default function SettingsPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -49,10 +49,10 @@ export default function SettingsPage() {
   const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState('');
 
-  const opts = { token: accessToken! };
+  const opts = {};
 
   const fetchSettings = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoading(true);
     try {
       const result = await getJson<Record<string, unknown>>(`${ADMIN_BASE}/settings`, opts);
@@ -86,14 +86,14 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
 
   const handleSave = async () => {
-    if (!accessToken || saving) return;
+    if (!isAuthenticated || saving) return;
     setSaving(true);
     setError('');
     setSaved(false);

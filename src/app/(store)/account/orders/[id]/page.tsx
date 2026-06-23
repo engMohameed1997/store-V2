@@ -77,21 +77,21 @@ function formatPrice(price: number | string | undefined | null): string {
 
 export default function OrderDetailPage() {
   const params = useParams();
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!accessToken || !params.id) return;
-    getJson<OrderDetail>(`/api/v1/orders/${params.id}`, { token: accessToken })
+    if (!isAuthenticated || !params.id) return;
+    getJson<OrderDetail>(`/api/v1/orders/${params.id}`)
       .then(res => {
         if (res.success) setOrder(res.data as OrderDetail);
         else setError(true);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [accessToken, params.id]);
+  }, [isAuthenticated, params.id]);
 
   if (loading) {
     return (

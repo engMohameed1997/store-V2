@@ -40,16 +40,16 @@ function formatPrice(price: number | string): string {
 }
 
 export default function OrdersPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const fetchOrders = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoading(true);
-    const res = await getJson<any>(`/api/v1/orders?page=${page}&limit=10`, { token: accessToken });
+    const res = await getJson<any>(`/api/v1/orders?page=${page}&limit=10`);
     if (res.success) {
       setOrders(res.data || []);
       if ('pagination' in res) {
@@ -57,7 +57,7 @@ export default function OrdersPage() {
       }
     }
     setLoading(false);
-  }, [accessToken, page]);
+  }, [isAuthenticated, page]);
 
   useEffect(() => {
     fetchOrders();

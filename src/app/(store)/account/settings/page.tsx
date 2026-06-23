@@ -7,7 +7,7 @@ import { putJson } from '@/lib/client/api';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [saving, setSaving] = useState(false);
 
@@ -21,12 +21,12 @@ export default function SettingsPage() {
       toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
       return;
     }
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setSaving(true);
     const res = await putJson('/api/v1/user/password', {
       currentPassword: passwordForm.currentPassword,
       newPassword: passwordForm.newPassword,
-    }, { token: accessToken });
+    });
     setSaving(false);
     if (res.success) {
       toast.success('تم تغيير كلمة المرور بنجاح');

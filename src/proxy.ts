@@ -144,7 +144,7 @@ function handleAuthRoutes(request: NextRequest): NextResponse | null {
   return null;
 }
 
-export function middleware(request: NextRequest) {
+function runMiddleware(request: NextRequest): NextResponse {
   if (request.method === "OPTIONS") {
     const response = new NextResponse(null, { status: 204 });
     return handleCors(request, response);
@@ -184,6 +184,20 @@ export function middleware(request: NextRequest) {
   }
 
   return response;
+}
+
+export function proxy(request: NextRequest): NextResponse {
+  try {
+    return runMiddleware(request);
+  } catch {
+    if (isApiRoute(request.nextUrl.pathname)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" } },
+        { status: 500 }
+      );
+    }
+    return NextResponse.next();
+  }
 }
 
 export const config = {

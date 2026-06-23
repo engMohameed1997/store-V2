@@ -57,7 +57,7 @@ const statusMap: Record<TicketStatus, { label: string; color: string; bg: string
 };
 
 export default function TicketsPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,10 +69,10 @@ export default function TicketsPage() {
   const [changingStatus, setChangingStatus] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const opts = { token: accessToken! };
+  const opts = {};
 
   const fetchTickets = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoading(true);
     try {
       const url = statusFilter === 'ALL'
@@ -87,14 +87,14 @@ export default function TicketsPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, statusFilter]);
+  }, [isAuthenticated, statusFilter]);
 
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
 
   const selectTicket = async (ticket: SupportTicket) => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoadingDetails(true);
     setSelectedTicket(ticket);
     try {
@@ -114,7 +114,7 @@ export default function TicketsPage() {
 
   const handlePostReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken || !selectedTicket || submittingReply || !replyBody.trim()) return;
+    if (!isAuthenticated || !selectedTicket || submittingReply || !replyBody.trim()) return;
 
     setSubmittingReply(true);
     try {
@@ -149,7 +149,7 @@ export default function TicketsPage() {
   };
 
   const handleUpdateStatus = async (status: TicketStatus) => {
-    if (!accessToken || !selectedTicket || changingStatus) return;
+    if (!isAuthenticated || !selectedTicket || changingStatus) return;
 
     setChangingStatus(status);
     try {

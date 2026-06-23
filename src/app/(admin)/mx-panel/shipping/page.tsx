@@ -34,7 +34,7 @@ const IRAQ_GOVERNORATES = [
 ];
 
 export default function ShippingPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [zones, setZones] = useState<ShippingZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,10 +50,10 @@ export default function ShippingPage() {
   const [formEstimatedDays, setFormEstimatedDays] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
 
-  const opts = { token: accessToken! };
+  const opts = {};
 
   const fetchZones = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoading(true);
     try {
       const result = await getJson<ShippingZone[]>(`${ADMIN_BASE}/shipping`, opts);
@@ -65,7 +65,7 @@ export default function ShippingPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchZones();
@@ -95,7 +95,7 @@ export default function ShippingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken || saving) return;
+    if (!isAuthenticated || saving) return;
     if (!formName.trim() || formGovernorates.length === 0) {
       setError('الاسم والمحافظات مطلوبة');
       return;

@@ -63,7 +63,7 @@ interface ProductListItem {
 }
 
 export default function BranchesPage() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -90,10 +90,10 @@ export default function BranchesPage() {
   const [updatingStock, setUpdatingStock] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const opts = { token: accessToken! };
+  const opts = {};
 
   const fetchBranches = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setLoading(true);
     setError('');
     try {
@@ -106,10 +106,10 @@ export default function BranchesPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   const fetchProducts = useCallback(async () => {
-    if (!accessToken || productsList.length > 0) return;
+    if (!isAuthenticated || productsList.length > 0) return;
     setLoadingProducts(true);
     try {
       // Get products for stock selection
@@ -122,7 +122,7 @@ export default function BranchesPage() {
     } finally {
       setLoadingProducts(false);
     }
-  }, [accessToken, productsList]);
+  }, [isAuthenticated, productsList]);
 
   useEffect(() => {
     fetchBranches();
@@ -155,7 +155,7 @@ export default function BranchesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken || submitting) return;
+    if (!isAuthenticated || submitting) return;
 
     if (!validateForm()) return;
 
@@ -199,7 +199,7 @@ export default function BranchesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     if (!confirm('هل أنت متأكد من حذف هذا الفرع؟ سيتم حذف جميع كميات المخزون المرتبطة به.')) return;
     try {
       const result = await deleteJson(`${ADMIN_BASE}/branches/${id}`, opts);
@@ -218,7 +218,7 @@ export default function BranchesPage() {
   };
 
   const loadInventory = async (branch: Branch) => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setSelectedBranch(branch);
     setLoadingInventory(true);
     try {
@@ -236,7 +236,7 @@ export default function BranchesPage() {
 
   const handleSetStock = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken || !selectedBranch || updatingStock) return;
+    if (!isAuthenticated || !selectedBranch || updatingStock) return;
 
     if (!stockProductId) {
       alert('الرجاء اختيار المنتج');

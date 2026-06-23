@@ -5,10 +5,10 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { createAdminClient } from '@/lib/client/admin';
 
 export function useAdminClient() {
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   return useMemo(() => {
-    if (!accessToken) return null;
-    return createAdminClient(accessToken);
-  }, [accessToken]);
+    if (!isAuthenticated) return null;
+    return createAdminClient();
+  }, [isAuthenticated]);
 }

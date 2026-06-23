@@ -57,7 +57,7 @@ function formatPrice(price: number | string): string {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, accessToken } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,10 +71,10 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState('');
 
   const fetchData = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     const [cartRes, addrRes] = await Promise.all([
-      getJson<Cart>('/api/v1/cart', { token: accessToken }),
-      getJson<Address[]>('/api/v1/addresses', { token: accessToken }),
+      getJson<Cart>('/api/v1/cart'),
+      getJson<Address[]>('/api/v1/addresses'),
     ]);
 
     if (cartRes.success) setCart(cartRes.data as Cart);
@@ -86,15 +86,15 @@ export default function CheckoutPage() {
       else if (addrs.length > 0) setSelectedAddress(addrs[0].id);
     }
     setLoading(false);
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (isAuthenticated && accessToken) {
+    if (isAuthenticated) {
       fetchData();
     } else if (!isLoading) {
       setLoading(false);
     }
-  }, [isAuthenticated, isLoading, accessToken, fetchData]);
+  }, [isAuthenticated, isLoading, fetchData]);
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +114,7 @@ export default function CheckoutPage() {
       paymentMethod,
       couponCode: couponCode.trim() || undefined,
       notes: notes.trim() || undefined,
-    }, { token: accessToken! });
+    });
 
     setSubmitting(false);
 

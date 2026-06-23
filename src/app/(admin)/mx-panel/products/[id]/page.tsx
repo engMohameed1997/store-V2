@@ -15,7 +15,6 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
-import { useAuth } from '@/components/providers/auth-provider';
 import { uploadFile } from '@/lib/client/api';
 import type { AdminCategory, AdminBrand, AdminBranch, UpdateProductInput } from '@/lib/client/admin';
 
@@ -32,7 +31,6 @@ interface SpecInput {
 
 export default function EditProductPage() {
   const client = useAdminClient();
-  const { accessToken } = useAuth();
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
@@ -342,11 +340,11 @@ export default function EditProductPage() {
   };
 
   const handleUploadFile = async (idx: number, file?: File) => {
-    if (!file || !accessToken) return;
+    if (!file) return;
     setUploading(idx);
     setError('');
     try {
-      const result = await uploadFile(file, 'products', accessToken);
+      const result = await uploadFile(file, 'products');
       if (result.success && result.data) {
         updateImage(idx, 'url', result.data.url);
       } else if (!result.success) {

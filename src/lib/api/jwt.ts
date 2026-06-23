@@ -9,6 +9,7 @@ const REFRESH_TOKEN_EXPIRY_DAYS = 7;
 const REFRESH_TOKEN_EXPIRY = `${REFRESH_TOKEN_EXPIRY_DAYS}d`;
 const REFRESH_TOKEN_EXPIRY_MS = REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 export const REFRESH_TOKEN_COOKIE_MAX_AGE = REFRESH_TOKEN_EXPIRY_MS / 1000; // seconds
+export const ACCESS_TOKEN_COOKIE_MAX_AGE = 15 * 60; // 15 minutes in seconds
 
 function getAccessSecret(): string {
   if (!ACCESS_TOKEN_SECRET || ACCESS_TOKEN_SECRET.length < 32) {

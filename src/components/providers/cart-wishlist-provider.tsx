@@ -70,38 +70,38 @@ interface CartWishlistContextValue {
 const CartWishlistContext = createContext<CartWishlistContextValue | null>(null);
 
 export function CartWishlistProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, accessToken, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refreshCart = useCallback(async () => {
-    if (!isAuthenticated || !accessToken) {
+    if (!isAuthenticated) {
       setCart(null);
       return;
     }
-    const res = await getJson<Cart>("/api/v1/cart", { token: accessToken });
+    const res = await getJson<Cart>("/api/v1/cart");
     if (res.success && res.data) {
       setCart(res.data as Cart);
     }
-  }, [isAuthenticated, accessToken]);
+  }, [isAuthenticated]);
 
   const refreshWishlist = useCallback(async () => {
-    if (!isAuthenticated || !accessToken) {
+    if (!isAuthenticated) {
       setWishlist([]);
       return;
     }
-    const res = await getJson<WishlistItem[]>("/api/v1/wishlist", { token: accessToken });
+    const res = await getJson<WishlistItem[]>("/api/v1/wishlist");
     if (res.success && res.data) {
       setWishlist(res.data as WishlistItem[]);
     }
-  }, [isAuthenticated, accessToken]);
+  }, [isAuthenticated]);
 
   // Initial load or auth status change
   useEffect(() => {
     if (authLoading) return;
 
-    if (isAuthenticated && accessToken) {
+    if (isAuthenticated) {
       setLoading(true);
       Promise.all([refreshCart(), refreshWishlist()]).finally(() => {
         setLoading(false);
@@ -111,7 +111,7 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
       setWishlist([]);
       setLoading(false);
     }
-  }, [isAuthenticated, accessToken, authLoading, refreshCart, refreshWishlist]);
+  }, [isAuthenticated, authLoading, refreshCart, refreshWishlist]);
 
   const cartCount = useMemo(() => {
     if (!cart?.items) return 0;
@@ -131,15 +131,14 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
 
   const addToCart = useCallback(
     async (productId: string, quantity = 1, variantId?: string) => {
-      if (!isAuthenticated || !accessToken) {
+      if (!isAuthenticated) {
         toast.error("يرجى تسجيل الدخول أولاً للإضافة إلى السلة");
         return false;
       }
 
       const res = await postJson<unknown>(
         "/api/v1/cart",
-        { productId, quantity, variantId },
-        { token: accessToken }
+        { productId, quantity, variantId }
       );
 
       if (res.success) {
@@ -151,14 +150,14 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [isAuthenticated, accessToken, refreshCart]
+    [isAuthenticated, refreshCart]
   );
 
   const removeItemFromCart = useCallback(
     async (itemId: string) => {
-      if (!isAuthenticated || !accessToken) return false;
+      if (!isAuthenticated) return false;
 
-      const res = await deleteJson<unknown>(`/api/v1/cart/${itemId}`, { token: accessToken });
+      const res = await deleteJson<unknown>(`/api/v1/cart/${itemId}`);
 
       if (res.success) {
         toast.success("تم الحذف من السلة");
@@ -169,17 +168,16 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [isAuthenticated, accessToken, refreshCart]
+    [isAuthenticated, refreshCart]
   );
 
   const updateCartItemQuantity = useCallback(
     async (itemId: string, quantity: number) => {
-      if (!isAuthenticated || !accessToken) return false;
+      if (!isAuthenticated) return false;
 
       const res = await putJson<unknown>(
         `/api/v1/cart/${itemId}`,
-        { quantity },
-        { token: accessToken }
+        { quantity }
       );
 
       if (res.success) {
@@ -190,20 +188,19 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [isAuthenticated, accessToken, refreshCart]
+    [isAuthenticated, refreshCart]
   );
 
   const toggleWishlist = useCallback(
     async (productId: string) => {
-      if (!isAuthenticated || !accessToken) {
+      if (!isAuthenticated) {
         toast.error("يرجى تسجيل الدخول أولاً لإضافة المنتج للمفضلة");
         return false;
       }
 
       const res = await postJson<{ added: boolean }>(
         "/api/v1/wishlist",
-        { productId },
-        { token: accessToken }
+        { productId }
       );
 
       if (res.success && res.data) {
@@ -219,7 +216,7 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [isAuthenticated, accessToken, refreshWishlist]
+    [isAuthenticated, refreshWishlist]
   );
 
   const value = useMemo(
