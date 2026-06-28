@@ -34,7 +34,7 @@ fi
 # ============================================
 if [ "$RUN_MIGRATIONS" = "true" ]; then
   echo "📦 Running migrations..."
-  node_modules/prisma/build/index.js migrate deploy || { echo "❌ Migrations failed — exiting."; exit 1; }
+  npx prisma migrate deploy || { echo "❌ Migrations failed — exiting."; exit 1; }
   echo "✅ Migrations complete!"
 fi
 
