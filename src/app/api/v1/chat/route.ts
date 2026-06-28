@@ -78,9 +78,12 @@ export async function POST(request: NextRequest) {
     // Trim to fit context window
     const trimmedMessages = trimMessagesToFit(validatedMessages, CHAT_LIMITS.MAX_CONTEXT_TOKENS);
 
-    // Convert UIMessage format to ModelMessage format (AI SDK v6)
+    // Convert to ModelMessage format (AI SDK v6) — use trimmed validated messages
     const modelMessages = await convertToModelMessages(
-      trimmedMessages.map((m) => ({ role: m.role, parts: [{ type: "text" as const, text: m.content }] } as Omit<UIMessage, "id">))
+      trimmedMessages.map((m) => ({
+        role: m.role,
+        parts: [{ type: "text" as const, text: m.content }],
+      } as Omit<UIMessage, "id">))
     );
 
     // ── Build system prompt ────────────────────────────────────────────────

@@ -38,18 +38,29 @@ export function validateMessages(raw: unknown): IncomingMessage[] {
       throw new ChatGuardError(`role غير مسموح به: ${msg.role}`);
     }
 
-    if (typeof msg.content !== "string") {
+    // Extract text content: support both legacy "content" string and UIMessage "parts" array
+    let content = "";
+    if (typeof msg.content === "string") {
+      content = msg.content;
+    } else if (Array.isArray(msg.parts)) {
+      content = (msg.parts as Array<Record<string, unknown>>)
+        .filter((p) => p.type === "text" && typeof p.text === "string")
+        .map((p) => p.text as string)
+        .join("");
+    }
+
+    if (!content) {
       throw new ChatGuardError(`محتوى الرسالة يجب أن يكون نصاً`);
     }
 
-    if (msg.role === "user" && msg.content.length > CHAT_LIMITS.MAX_USER_MESSAGE_LENGTH) {
+    if (msg.role === "user" && content.length > CHAT_LIMITS.MAX_USER_MESSAGE_LENGTH) {
       throw new ChatGuardError(
         `الرسالة طويلة جداً (الحد الأقصى ${CHAT_LIMITS.MAX_USER_MESSAGE_LENGTH} حرف)`,
         400
       );
     }
 
-    return { role: msg.role as string, content: msg.content as string };
+    return { role: msg.role as string, content };
   });
 }
 

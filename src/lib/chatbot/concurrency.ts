@@ -11,7 +11,9 @@ export async function acquireLock(identifier: string): Promise<boolean> {
     nx: true,
     ex: CHAT_LIMITS.CONCURRENCY_LOCK_TTL_SEC,
   });
-  return result === "OK";
+  // result === "OK" when Redis is active and lock acquired
+  // result === null when Redis is not configured (no-op fallback) — allow through
+  return result === "OK" || result === null;
 }
 
 export async function releaseLock(identifier: string): Promise<void> {
