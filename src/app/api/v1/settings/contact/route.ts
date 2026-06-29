@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 
 // Public endpoint — returns only WhatsApp/Telegram contact info (no auth required)
 export const GET = publicRoute(async () => {
-  const keys = ["socialWhatsapp", "socialTelegram", "whatsappGreeting", "storePhone"];
+  const keys = ["socialWhatsapp", "socialTelegram", "socialFacebook", "socialInstagram", "socialTiktok", "whatsappGreeting", "storePhone"];
   const settings = await db.storeSetting.findMany({
     where: { key: { in: keys } },
   });
