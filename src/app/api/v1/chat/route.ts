@@ -8,12 +8,13 @@ import {
 import { optionalAuth, getClientIp } from "@/lib/api/auth-guard";
 import { checkRateLimit } from "@/lib/api/rate-limiter";
 import { redis } from "@/lib/redis";
-import { getAIModel } from "@/lib/chatbot/config";
+import { getAIModel, isAIConfigured } from "@/lib/chatbot/config";
 import { buildTools } from "@/lib/chatbot/tools";
 import { buildSystemPrompt } from "@/lib/chatbot/prompt";
 import { acquireLock, releaseLock } from "@/lib/chatbot/concurrency";
 import { validateMessages, validateCurrentPage, trimMessagesToFit, ChatGuardError } from "@/lib/chatbot/guard";
 import { CHAT_LIMITS } from "@/lib/chatbot/config";
+import { getCachedUserProfile } from "@/lib/chatbot/cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -26,6 +27,16 @@ export async function POST(request: NextRequest) {
   const tier = authUser ? "chat_user" : "chat_guest";
   const rateLimitRes = await checkRateLimit(request, tier);
   if (rateLimitRes) return rateLimitRes;
+
+  // ── AI availability guard ────────────────────────────────────────────────
+  // Fail fast with a friendly message when no provider credentials are set,
+  // instead of surfacing an opaque 500 once streaming has begun.
+  if (!isAIConfigured()) {
+    return NextResponse.json(
+      { success: false, error: { code: "AI_NOT_CONFIGURED", message: "خدمة المساعد الذكي غير متاحة حالياً. يرجى المحاولة لاحقاً." } },
+      { status: 503 }
+    );
+  }
 
   // Daily quota for authenticated users
   if (authUser) {
@@ -86,10 +97,21 @@ export async function POST(request: NextRequest) {
       } as Omit<UIMessage, "id">))
     );
 
+    // ── Resolve display name for personalization (cached, best-effort) ─────
+    let userName: string | undefined;
+    if (authUser) {
+      try {
+        const profile = await getCachedUserProfile(authUser.userId);
+        userName = profile.firstName ?? undefined;
+      } catch {
+        userName = undefined;
+      }
+    }
+
     // ── Build system prompt ────────────────────────────────────────────────
     const systemPrompt = buildSystemPrompt({
       isAuthenticated: !!authUser,
-      userName: authUser ? undefined : undefined,
+      userName,
       currentPage,
     });
 
@@ -105,7 +127,8 @@ export async function POST(request: NextRequest) {
       onFinish: () => {
         releaseLock(lockId).catch(() => {});
       },
-      onError: () => {
+      onError: (event) => {
+        console.error("[Chat API] stream error", event);
         releaseLock(lockId).catch(() => {});
       },
     });

@@ -25,7 +25,9 @@ export interface PromptContext {
 export function buildSystemPrompt(ctx: PromptContext): string {
   const pageLabel = PAGE_CONTEXT[ctx.currentPage] ?? "صفحة المتجر";
   const userLine = ctx.isAuthenticated
-    ? `المستخدم مسجل الدخول باسم: ${ctx.userName ?? "مستخدم"}.`
+    ? ctx.userName
+      ? `المستخدم مسجل الدخول باسم: ${ctx.userName}.`
+      : "المستخدم مسجل الدخول."
     : "المستخدم غير مسجل الدخول.";
 
   return `أنت مساعد ذكي لمتجر إلكتروني عراقي. مهمتك مساعدة العملاء فقط في مهام المتجر.

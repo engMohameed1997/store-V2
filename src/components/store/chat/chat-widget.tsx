@@ -1,10 +1,27 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, X, Sparkles } from 'lucide-react';
+import { Bot, X, Sparkles, RotateCcw } from 'lucide-react';
 import { useStoreChat } from '@/hooks/use-store-chat';
 import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
+
+function getFriendlyError(error: Error): string {
+  const raw = (error.message || '').trim();
+  if (raw.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(raw);
+      const msg = parsed?.error?.message;
+      if (typeof msg === 'string' && msg) return msg;
+    } catch {
+      // not JSON — fall through to generic handling
+    }
+  }
+  if (!raw || /fetch|network|failed|an error occurred/i.test(raw)) {
+    return 'حدث خطأ. يرجى المحاولة مرة أخرى.';
+  }
+  return raw;
+}
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,6 +44,18 @@ export function ChatWidget() {
     setInput('');
   };
 
+  const handleReset = () => {
+    if (isLoading) chat.stop();
+    chat.setMessages([]);
+    chat.clearError?.();
+    setInput('');
+  };
+
+  const handleSuggestion = (text: string) => {
+    if (isLoading) return;
+    chat.sendMessage({ text });
+  };
+
   if (!isOpen) {
     return (
       <button
@@ -47,22 +76,34 @@ export function ChatWidget() {
           <Bot size={20} />
           <span className="font-medium text-sm">المساعد الذكي</span>
         </div>
-        <button
-          onClick={() => setIsOpen(false)}
-          aria-label="إغلاق"
-          className="hover:bg-primary-foreground/20 rounded-lg p-1 transition"
-        >
-          <X size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          {chat.messages.length > 0 && (
+            <button
+              onClick={handleReset}
+              aria-label="محادثة جديدة"
+              title="محادثة جديدة"
+              className="hover:bg-primary-foreground/20 rounded-lg p-1 transition"
+            >
+              <RotateCcw size={16} />
+            </button>
+          )}
+          <button
+            onClick={() => setIsOpen(false)}
+            aria-label="إغلاق"
+            className="hover:bg-primary-foreground/20 rounded-lg p-1 transition"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
-        <ChatMessages messages={chat.messages} status={chat.status} />
+        <ChatMessages messages={chat.messages} status={chat.status} onSuggestion={handleSuggestion} />
       </div>
 
       {chat.error && (
         <div className="px-4 py-2 text-xs text-destructive bg-destructive/10 border-t border-destructive/20">
-          {chat.error.message || 'حدث خطأ. حاول مرة أخرى.'}
+          {getFriendlyError(chat.error)}
         </div>
       )}
 

@@ -6,7 +6,10 @@ import { Bot, User, Loader2, Wrench } from 'lucide-react';
 interface ChatMessagesProps {
   messages: UIMessage[];
   status: string;
+  onSuggestion?: (text: string) => void;
 }
+
+const SUGGESTIONS = ['ابحث عن منتج', 'أين طلبي؟', 'معلومات التوصيل', 'سياسة الإرجاع'];
 
 function extractText(parts: UIMessage['parts']): string {
   return parts
@@ -19,7 +22,7 @@ function hasToolParts(parts: UIMessage['parts']): boolean {
   return parts.some((p) => p.type.startsWith('tool'));
 }
 
-export function ChatMessages({ messages, status }: ChatMessagesProps) {
+export function ChatMessages({ messages, status, onSuggestion }: ChatMessagesProps) {
   if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-8">
@@ -27,6 +30,20 @@ export function ChatMessages({ messages, status }: ChatMessagesProps) {
         <p className="text-sm text-muted-foreground">
           مرحباً! أنا المساعد الذكي للمتجر. اسألني عن المنتجات، الطلبات، التوصيل، أو أي استفسار آخر.
         </p>
+        {onSuggestion && (
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onSuggestion(s)}
+                className="text-xs rounded-full border border-border bg-muted/50 hover:bg-muted px-3 py-1.5 text-foreground transition"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

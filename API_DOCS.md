@@ -148,6 +148,52 @@ Same CRUD pattern under `/mx-panel/...`
 
 ---
 
+## AI Assistant (Chatbot)
+Streaming AI assistant for storefront customers. Works for both guests and authenticated users — authenticated users get higher limits, name personalization, and access to order/profile tools.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/chat` | Streamed assistant reply (Vercel AI SDK UI message stream) |
+
+### Request
+```json
+POST /chat
+{
+  "messages": [
+    { "role": "user", "content": "أين طلبي؟" }
+  ],
+  "currentPage": "orders"
+}
+```
+- `messages`: conversation history (max 20). User messages max 500 chars.
+- `currentPage`: storefront context (e.g. `home`, `products`, `cart`, `orders`).
+
+### Response
+Returns a streaming UI message stream (not JSON). On errors (rate limit, quota, validation, AI unavailable) returns JSON `{ success:false, error:{ code, message } }`.
+
+### Tools (server-side, invoked by the model)
+- `searchProducts`, `getProductDetails`, `getPageInfo` — public.
+- `getMyOrders`, `getOrderStatus`, `getMyProfile` — require auth.
+
+### Error codes
+| Code | Status | Meaning |
+|------|--------|---------|
+| `AI_NOT_CONFIGURED` | 503 | No AI provider credentials set |
+| `CONCURRENT_REQUEST` | 409 | A previous message is still processing |
+| `DAILY_QUOTA_EXCEEDED` | 429 | >100 messages/day (authenticated) |
+| `VALIDATION_ERROR` | 400/429 | Invalid or too many messages |
+
+### Configuration (env)
+Set the provider and credentials in `.env` (see `.env.example`):
+```
+AI_PROVIDER="openai"   # openai | google | anthropic | local
+AI_MODEL="gpt-4o-mini"
+OPENAI_API_KEY="..."   # or GOOGLE_GENERATIVE_AI_API_KEY / ANTHROPIC_API_KEY
+```
+If no credentials are configured, the endpoint returns `503 AI_NOT_CONFIGURED` and the widget shows a friendly “unavailable” message.
+
+---
+
 ## Response Format
 
 ### Success
@@ -203,3 +249,7 @@ Same CRUD pattern under `/mx-panel/...`
 | auth | 10 req | 15 min |
 | strict | 5 req | 1 min |
 | search | 30 req | 1 min |
+| upload | 10 req | 1 min |
+| chat_guest | 5 req | 1 min |
+| chat_user | 15 req | 1 min |
+| chat_daily | 100 req | 24 h |

@@ -12,6 +12,28 @@ export const CHAT_LIMITS = {
   CONCURRENCY_LOCK_TTL_SEC: 30,
 } as const;
 
+/**
+ * Returns true when the selected AI provider has the credentials it needs.
+ * Used to fail fast with a friendly message instead of a 500 at stream time.
+ */
+export function isAIConfigured(): boolean {
+  const provider = (process.env.AI_PROVIDER as AIProvider) ?? "openai";
+
+  switch (provider) {
+    case "google":
+      return !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    case "anthropic":
+      return !!process.env.ANTHROPIC_API_KEY;
+    case "local":
+      // Local provider talks to a self-hosted endpoint and needs no API key.
+      return true;
+    case "openai":
+    default:
+      // A custom base URL implies an OpenAI-compatible gateway that may not need a key.
+      return !!process.env.OPENAI_API_KEY || !!process.env.AI_BASE_URL;
+  }
+}
+
 export function getAIModel(): LanguageModel {
   const provider = (process.env.AI_PROVIDER as AIProvider) ?? "openai";
   const model = process.env.AI_MODEL;
