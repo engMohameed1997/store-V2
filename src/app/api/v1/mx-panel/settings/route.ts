@@ -43,13 +43,14 @@ const ALLOWED_SETTING_KEYS = [
   "freeShippingThreshold",
 ] as const;
 
-const settingValue = z.union([
-  z.string().max(2000),
-  z.number(),
-  z.boolean(),
-]);
+const allowedKeysSet = new Set<string>(ALLOWED_SETTING_KEYS);
 
-const updateSettingsSchema = z.record(z.enum(ALLOWED_SETTING_KEYS), settingValue);
+const updateSettingsSchema = z
+  .record(z.string(), z.union([z.string().max(2000), z.number(), z.boolean()]))
+  .refine(
+    (obj) => Object.keys(obj).every((k) => allowedKeysSet.has(k)),
+    { message: "One or more keys are not allowed" }
+  );
 
 export const GET = adminRoute(async () => {
   const settings = await db.storeSetting.findMany({
