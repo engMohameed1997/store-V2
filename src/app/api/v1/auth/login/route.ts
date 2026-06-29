@@ -18,9 +18,11 @@ export const POST = publicRoute(async (request: NextRequest) => {
   const response = apiSuccess({ user: result.user }, "Login successful");
 
   // Access token: HttpOnly cookie — never exposed to JavaScript
+  const isSecure = process.env.NODE_ENV === "production" && process.env.HTTPS_ENABLED === "true";
+
   response.cookies.set("accessToken", result.accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
     sameSite: "strict",
     path: "/",
     maxAge: ACCESS_TOKEN_COOKIE_MAX_AGE,
@@ -29,7 +31,7 @@ export const POST = publicRoute(async (request: NextRequest) => {
   // Refresh token: HttpOnly cookie — used to rotate access tokens
   response.cookies.set("refreshToken", result.refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
     sameSite: "strict",
     path: "/api/v1/auth",
     maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE,
