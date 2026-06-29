@@ -110,7 +110,7 @@ function handleCors(request: NextRequest, response: NextResponse): NextResponse 
 // verify-email: needs session | verify-phone: needs phone param | reset-password: guest only
 
 function isAuthenticated(request: NextRequest): boolean {
-  return !!request.cookies.get("refreshToken")?.value;
+  return !!request.cookies.get("accessToken")?.value;
 }
 
 function handleAuthRoutes(request: NextRequest): NextResponse | null {
