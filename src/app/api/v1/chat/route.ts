@@ -5,7 +5,7 @@ import {
   stepCountIs,
   type UIMessage,
 } from "ai";
-import { optionalAuth, getClientIp } from "@/lib/api/auth-guard";
+import { requireAuth } from "@/lib/api/auth-guard";
 import { checkRateLimit } from "@/lib/api/rate-limiter";
 import { redis } from "@/lib/redis";
 import { getAIModel, isAIConfigured } from "@/lib/chatbot/config";
@@ -20,17 +20,13 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  const authUser = await optionalAuth(request);
-  const ip = getClientIp(request);
+  const authUser = await requireAuth(request);
 
   // ── Rate limiting ────────────────────────────────────────────────────────
-  const tier = authUser ? "chat_user" : "chat_guest";
-  const rateLimitRes = await checkRateLimit(request, tier);
+  const rateLimitRes = await checkRateLimit(request, "chat_user");
   if (rateLimitRes) return rateLimitRes;
 
   // ── AI availability guard ────────────────────────────────────────────────
-  // Fail fast with a friendly message when no provider credentials are set,
-  // instead of surfacing an opaque 500 once streaming has begun.
   if (!isAIConfigured()) {
     return NextResponse.json(
       { success: false, error: { code: "AI_NOT_CONFIGURED", message: "خدمة المساعد الذكي غير متاحة حالياً. يرجى المحاولة لاحقاً." } },
@@ -39,20 +35,18 @@ export async function POST(request: NextRequest) {
   }
 
   // Daily quota for authenticated users
-  if (authUser) {
-    const dailyKey = `rl:chat:daily:${authUser.userId}`;
-    const dailyCount = await redis.incr(dailyKey);
-    if (dailyCount === 1) await redis.expire(dailyKey, 86400);
-    if (dailyCount > 100) {
-      return NextResponse.json(
-        { success: false, error: { code: "DAILY_QUOTA_EXCEEDED", message: "تجاوزت الحد اليومي (100 رسالة). حاول غداً." } },
-        { status: 429 }
-      );
-    }
+  const dailyKey = `rl:chat:daily:${authUser.userId}`;
+  const dailyCount = await redis.incr(dailyKey);
+  if (dailyCount === 1) await redis.expire(dailyKey, 86400);
+  if (dailyCount > 100) {
+    return NextResponse.json(
+      { success: false, error: { code: "DAILY_QUOTA_EXCEEDED", message: "تجاوزت الحد اليومي (100 رسالة). حاول غداً." } },
+      { status: 429 }
+    );
   }
 
   // ── Concurrency guard ────────────────────────────────────────────────────
-  const lockId = authUser ? authUser.userId : ip;
+  const lockId = authUser.userId;
   const acquired = await acquireLock(lockId);
   if (!acquired) {
     return NextResponse.json(

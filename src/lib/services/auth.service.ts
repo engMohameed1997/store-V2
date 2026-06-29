@@ -50,8 +50,11 @@ export class AuthService {
     }
 
     try {
-      // Check if user already exists
-      const existing = await db.user.findUnique({ where: { phone: input.phone } });
+      // Check if user already exists (check both +964 and 0 prefix formats)
+      const altPhone = input.phone.replace(/^\+964/, "0");
+      const existing = await db.user.findFirst({
+        where: { phone: { in: [input.phone, altPhone] } },
+      });
       if (existing) {
         throw Errors.conflict("رقم الهاتف مستخدم بالفعل.");
       }

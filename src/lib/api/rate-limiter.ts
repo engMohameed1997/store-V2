@@ -55,7 +55,7 @@ export async function checkRateLimit(
 
     const response = apiError(
       "RATE_LIMITED",
-      `Too many requests. Retry after ${retryAfter}s`,
+      `طلبات كثيرة. حاول بعد ${retryAfter} ثانية.`,
       429
     );
     response.headers.set("Retry-After", String(retryAfter));

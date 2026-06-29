@@ -16,6 +16,14 @@ type Step = 'form' | 'otp';
 
 const RESEND_COOLDOWN = 60;
 
+const PASSWORD_CHECKS = [
+  { label: 'حرف كبير (A-Z)', test: (v: string) => /[A-Z]/.test(v) },
+  { label: 'حرف صغير (a-z)', test: (v: string) => /[a-z]/.test(v) },
+  { label: 'رقم (0-9)', test: (v: string) => /\d/.test(v) },
+  { label: 'رمز خاص (!@#$...)', test: (v: string) => /[!@#$%^&*(),.?":{}|<>]/.test(v) },
+  { label: '8 أحرف على الأقل', test: (v: string) => v.length >= 8 },
+];
+
 export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
@@ -23,11 +31,13 @@ export default function RegisterPage() {
   const [step, setStep] = useState<Step>('form');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [cooldown, setCooldown] = useState(0);
   const [resending, setResending] = useState(false);
+  const [preAuthToken, setPreAuthToken] = useState<string | null>(null);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const router = useRouter();
   const { isAuthenticated, isLoading, setAuth } = useAuth();
@@ -70,10 +80,19 @@ export default function RegisterPage() {
     const auth = getFirebaseAuth();
     const verifier = await setupRecaptcha();
     const normalized = normalizePhoneForFirebase(phoneNumber);
-    const result = await signInWithPhoneNumber(auth, normalized, verifier);
-    setConfirmationResult(result);
-    setCooldown(RESEND_COOLDOWN);
-    return result;
+    try {
+      const result = await signInWithPhoneNumber(auth, normalized, verifier);
+      setConfirmationResult(result);
+      setCooldown(RESEND_COOLDOWN);
+      return result;
+    } catch (err) {
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear(); } catch { /* ignore */ }
+        recaptchaVerifierRef.current = null;
+      }
+      const friendlyMsg = getFirebaseErrorMessage(err);
+      throw new Error(friendlyMsg, { cause: err });
+    }
   };
 
   const handleSendOtp = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -85,16 +104,39 @@ export default function RegisterPage() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError('كلمتا المرور غير متطابقتين.');
+      return;
+    }
+
+    const failedCheck = PASSWORD_CHECKS.find((c) => !c.test(password));
+    if (failedCheck) {
+      setError(`كلمة المرور يجب أن تحتوي على: ${failedCheck.label}`);
+      return;
+    }
+
     setLoading(true);
     try {
-      await sendOtp(phone);
+      const otpResult = await authClient.sendOtp(phone);
+      if (!otpResult.success) {
+        setError(otpResult.error?.message || 'تعذّر إرسال رمز التحقق. حاول لاحقاً.');
+        return;
+      }
+
+      const token = otpResult.data?.preAuthToken ?? null;
+      setPreAuthToken(token);
+
+      if (token) {
+        await sendOtp(phone);
+      }
+
       setStep('otp');
       toast.success('تم إرسال رمز التحقق إلى هاتفك');
     } catch (err: unknown) {
-      console.error('[Firebase OTP Error]', err);
-      setError(getFirebaseErrorMessage(err));
+      const msg = err instanceof Error ? err.message : 'تعذّر إرسال رمز التحقق. حاول لاحقاً.';
+      setError(msg);
       if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
+        try { recaptchaVerifierRef.current.clear(); } catch { /* ignore */ }
         recaptchaVerifierRef.current = null;
       }
     } finally {
@@ -107,14 +149,17 @@ export default function RegisterPage() {
     setResending(true);
     setError('');
     try {
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
+      if (preAuthToken) {
+        if (recaptchaVerifierRef.current) {
+          recaptchaVerifierRef.current.clear();
+          recaptchaVerifierRef.current = null;
+        }
+        await sendOtp(phone);
       }
-      await sendOtp(phone);
       toast.success('تم إعادة إرسال رمز التحقق');
     } catch (err: unknown) {
-      setError(getFirebaseErrorMessage(err));
+      const msg = err instanceof Error ? err.message : 'تعذّر إرسال رمز التحقق. حاول لاحقاً.';
+      setError(msg);
     } finally {
       setResending(false);
     }
@@ -155,6 +200,13 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
     try {
+      if (!preAuthToken) {
+        setError('رمز التحقق غير صحيح.');
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+        return;
+      }
+
       if (!confirmationResult) {
         setError('انتهت الجلسة. أعد المحاولة.');
         setStep('form');
@@ -167,9 +219,11 @@ export default function RegisterPage() {
       const result = await authClient.registerByPhone({
         phone: normalizePhoneForFirebase(phone),
         password,
+        confirmPassword,
         firstName,
         lastName,
         firebaseIdToken: idToken,
+        preAuthToken,
       });
 
       if (result.success && result.data?.user) {
@@ -201,6 +255,7 @@ export default function RegisterPage() {
     setStep('form');
     setOtp(['', '', '', '', '', '']);
     setError('');
+    setPreAuthToken(null);
     if (recaptchaVerifierRef.current) {
       recaptchaVerifierRef.current.clear();
       recaptchaVerifierRef.current = null;
@@ -294,6 +349,47 @@ export default function RegisterPage() {
                 </button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">{MSG.password.requirements}</p>
+              {password && (
+                <div className="mt-2 space-y-1">
+                  {PASSWORD_CHECKS.map((check, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <span className={check.test(password) ? 'text-green-500' : 'text-destructive'}>
+                        {check.test(password) ? '✓' : '✗'}
+                      </span>
+                      <span className={check.test(password) ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}>
+                        {check.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1 block">تأكيد كلمة المرور</label>
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  name="confirmPassword"
+                  placeholder="••••••••"
+                  required
+                  dir="ltr"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`w-full pr-10 pl-10 py-3 border rounded-xl bg-background text-foreground outline-none focus:border-primary transition ${confirmPassword && confirmPassword !== password ? 'border-destructive' : 'border-border'}`}
+                />
+                <Lock size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+                >
+                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {confirmPassword && confirmPassword !== password && (
+                <p className="text-xs text-destructive mt-1">كلمتا المرور غير متطابقتين</p>
+              )}
             </div>
 
             <div id="recaptcha-container" className="absolute -top-96 -left-96 w-1 h-1 overflow-hidden" />

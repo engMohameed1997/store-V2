@@ -5,6 +5,7 @@ import { Bot, X, Sparkles, RotateCcw } from 'lucide-react';
 import { useStoreChat } from '@/hooks/use-store-chat';
 import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
+import { useAuth } from '@/components/providers/auth-provider';
 
 function getFriendlyError(error: Error): string {
   const raw = (error.message || '').trim();
@@ -28,12 +29,15 @@ export function ChatWidget() {
   const [input, setInput] = useState('');
   const chat = useStoreChat();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [chat.messages, chat.status]);
+
+  if (isAuthLoading || !isAuthenticated) return null;
 
   const isLoading = chat.status === 'submitted' || chat.status === 'streaming';
 

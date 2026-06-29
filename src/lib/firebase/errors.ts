@@ -14,6 +14,14 @@ const FIREBASE_ERROR_MAP: Record<string, string> = {
   "auth/user-disabled": "تعذّر إرسال رمز التحقق. حاول لاحقاً.",
   "auth/captcha-check-failed": "تعذّر التحقق. أعد المحاولة.",
   "auth/missing-client-identifier": "تعذّر التحقق. أعد المحاولة.",
+  "auth/billing-not-enabled": "تعذّر إرسال رمز التحقق. حاول لاحقاً.",
+  "auth/unverified-domain": "تعذّر إرسال رمز التحقق. حاول لاحقاً.",
+  "auth/invalid-app-credential": "تعذّر إرسال رمز التحقق. حاول لاحقاً.",
+  "auth/admin-restricted-operation": "تعذّر إرسال رمز التحقق. حاول لاحقاً.",
+  "auth/argument-error": "تعذّر إرسال رمز التحقق. حاول لاحقاً.",
+  "auth/configuration-not-found": "تعذّر إرسال رمز التحقق. حاول لاحقاً.",
+  "auth/missing-phone-number": "رقم الهاتف غير صالح.",
+  "auth/invalid-verification-session": "انتهت الجلسة. أعد الإرسال.",
 };
 
 export function getFirebaseErrorMessage(err: unknown): string {

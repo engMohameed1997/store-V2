@@ -28,9 +28,14 @@ const safeName = z
 export const registerByPhoneSchema = z.object({
   phone: iraqiPhone,
   password: strongPassword,
+  confirmPassword: strongPassword,
   firstName: safeName,
   lastName: safeName,
   firebaseIdToken: z.string().min(1, "رمز التحقق مطلوب"),
+  preAuthToken: z.string().min(1, "رمز التحقق المسبق مطلوب"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "كلمتا المرور غير متطابقتين.",
+  path: ["confirmPassword"],
 });
 
 export const loginSchema = z.object({
