@@ -20,8 +20,8 @@ export function WhatsAppButton() {
 
   if (!phone) return null;
 
-  // Clean the phone number: remove spaces, dashes, etc.
-  const cleanPhone = phone.replace(/[\s\-()]/g, '');
+  // Clean the phone number: remove spaces, dashes, bidi control chars, and all non-numeric except +
+  const cleanPhone = phone.replace(/[^\d+]/g, '');
 
   const whatsappUrl = `https://wa.me/${cleanPhone}${greeting ? `?text=${encodeURIComponent(greeting)}` : ''}`;
 

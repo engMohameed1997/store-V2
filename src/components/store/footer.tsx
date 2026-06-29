@@ -73,7 +73,15 @@ export default function Footer() {
     { key: 'socialTiktok', label: 'تيك توك', Icon: TikTokIcon, hoverColor: '#EE1D52' },
     { key: 'socialTelegram', label: 'تلجرام', Icon: TelegramIcon, hoverColor: '#0088CC' },
     { key: 'socialWhatsapp', label: 'واتساب', Icon: WhatsAppIcon, hoverColor: '#25D366' },
-  ].filter(s => social[s.key]);
+  ].filter(s => social[s.key])
+    .map(s => {
+      let href = social[s.key];
+      if (s.key === 'socialWhatsapp') {
+        const cleanPhone = href.replace(/[^\d+]/g, '');
+        href = `https://wa.me/${cleanPhone}`;
+      }
+      return { ...s, href };
+    });
 
   return (
     <footer className="bg-primary text-white mt-16">
@@ -88,10 +96,10 @@ export default function Footer() {
               متجرك الإلكتروني الأول. نوفر لك أفضل المنتجات بأفضل الأسعار مع خدمة توصيل سريعة وموثوقة لجميع المحافظات.
             </p>
             <div className="flex gap-3">
-              {socialLinks.length > 0 ? socialLinks.map(({ key, label, Icon, hoverColor }) => (
+              {socialLinks.length > 0 ? socialLinks.map(({ key, label, Icon, hoverColor, href }) => (
                 <a
                   key={key}
-                  href={social[key]}
+                  href={href}
                   target="_blank"
                   rel="noopener noreferrer"
                   title={label}
