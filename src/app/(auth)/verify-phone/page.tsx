@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { ShieldCheck, Loader2, Phone, ArrowRight } from 'lucide-react';
 import { authClient } from '@/lib/client/auth';
 import { MSG } from '@/lib/messages';
+import { getFirebaseAuth, isFirebaseClientConfigured, normalizePhoneForFirebase } from '@/lib/firebase/client';
+import { getFirebaseErrorMessage } from '@/lib/firebase/errors';
+import { RecaptchaVerifier, signInWithPhoneNumber, signOut, type ConfirmationResult } from 'firebase/auth';
 
 const RESEND_COOLDOWN = 60;
 
@@ -18,9 +21,13 @@ function VerifyPhoneForm() {
   const [phone, setPhone] = useState(phoneFromQuery);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     if (phoneFromQuery) inputRefs.current[0]?.focus();
@@ -31,6 +38,81 @@ function VerifyPhoneForm() {
     const timer = setInterval(() => setCooldown((p) => p - 1), 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
+
+  useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
+    };
+  }, []);
+
+  const setupRecaptcha = useCallback(async () => {
+    if (recaptchaVerifierRef.current) return recaptchaVerifierRef.current;
+    const auth = getFirebaseAuth();
+    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+    });
+    await verifier.render();
+    recaptchaVerifierRef.current = verifier;
+    return verifier;
+  }, []);
+
+  const sendOtp = async (phoneNumber: string): Promise<ConfirmationResult> => {
+    const auth = getFirebaseAuth();
+    const verifier = await setupRecaptcha();
+    const normalized = normalizePhoneForFirebase(phoneNumber);
+    const result = await signInWithPhoneNumber(auth, normalized, verifier);
+    setConfirmationResult(result);
+    setCooldown(RESEND_COOLDOWN);
+    setOtpSent(true);
+    return result;
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phone.trim()) {
+      setError('أدخل رقم الهاتف');
+      return;
+    }
+
+    if (!isFirebaseClientConfigured()) {
+      setError('تعذّر إرسال رمز التحقق. حاول مرة أخرى لاحقاً.');
+      return;
+    }
+
+    setSending(true);
+    setError('');
+    try {
+      await sendOtp(phone);
+    } catch (err: unknown) {
+      setError(getFirebaseErrorMessage(err));
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleResend = useCallback(async () => {
+    if (resending || cooldown > 0 || !phone.trim()) return;
+    setResending(true);
+    setError('');
+    try {
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
+      await sendOtp(phone);
+    } catch (err: unknown) {
+      setError(getFirebaseErrorMessage(err));
+    } finally {
+      setResending(false);
+    }
+  }, [resending, cooldown, phone]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -71,38 +153,95 @@ function VerifyPhoneForm() {
     setLoading(true);
     setError('');
     try {
-      const result = await authClient.verifyPhone({ phone, code: fullCode });
+      if (!confirmationResult) {
+        setError('انتهت الجلسة. أعد إرسال الرمز.');
+        return;
+      }
+
+      const userCredential = await confirmationResult.confirm(fullCode);
+      const idToken = await userCredential.user.getIdToken();
+
+      const result = await authClient.verifyPhone({
+        phone: normalizePhoneForFirebase(phone),
+        firebaseIdToken: idToken,
+      });
+
       if (result.success) {
         router.push('/login?verified=true');
-      } else if (!result.success) {
-        setError(result.error.message || MSG.auth.otpInvalid);
+      } else {
+        setError(result.error?.message || MSG.auth.otpInvalid);
         setCode(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
+        try { await signOut(getFirebaseAuth()); } catch { /* ignore */ }
       }
-    } catch {
-      setError(MSG.common.unexpected);
+    } catch (err: unknown) {
+      setError(getFirebaseErrorMessage(err));
+      setCode(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+      try { await signOut(getFirebaseAuth()); } catch { /* ignore */ }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResend = useCallback(async () => {
-    if (resending || cooldown > 0 || !phone.trim()) return;
-    setResending(true);
-    try {
-      const result = await authClient.resendOtp(phone);
-      if (result.success) {
-        setCooldown(RESEND_COOLDOWN);
-        setError('');
-      } else if (!result.success) {
-        setError(result.error.message || MSG.common.unexpected);
-      }
-    } catch {
-      setError(MSG.common.unexpected);
-    } finally {
-      setResending(false);
-    }
-  }, [resending, cooldown, phone]);
+  if (!otpSent) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="bg-card rounded-2xl border border-border p-8 shadow-lg">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <ShieldCheck className="w-8 h-8 text-primary" />
+            </div>
+          </div>
+
+          <h1 className="text-2xl font-bold text-center text-foreground mb-2">تأكيد رقم الهاتف</h1>
+          <p className="text-center text-muted-foreground text-sm mb-8">أدخل رقم هاتفك لإرسال رمز التحقق</p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm text-center">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSendOtp}>
+            <div className="mb-6">
+              <label className="text-sm font-medium text-foreground mb-1 block">رقم الهاتف</label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="07XXXXXXXXX"
+                  required
+                  dir="ltr"
+                  className="w-full pr-10 pl-4 py-3 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition"
+                />
+                <Phone size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              </div>
+            </div>
+
+            <div id="recaptcha-container" className="absolute -top-96 -left-96 w-1 h-1 overflow-hidden" />
+
+            <button
+              type="submit"
+              disabled={sending}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary-dark hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {sending ? <Loader2 size={18} className="animate-spin" /> : <Phone size={18} />}
+              {sending ? 'جاري الإرسال...' : 'إرسال رمز التحقق'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <Link href="/login" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition">
+              <ArrowRight size={14} />
+              العودة لتسجيل الدخول
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md">
@@ -114,7 +253,7 @@ function VerifyPhoneForm() {
         </div>
 
         <h1 className="text-2xl font-bold text-center text-foreground mb-2">تأكيد رقم الهاتف</h1>
-        <p className="text-center text-muted-foreground text-sm mb-8">أدخل الرمز المكوّن من 6 أرقام المرسل إلى هاتفك</p>
+        <p className="text-center text-muted-foreground text-sm mb-8">أدخل الرمز المكوّن من 6 أرقام المرسل إلى {phone}</p>
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm text-center">
@@ -122,27 +261,7 @@ function VerifyPhoneForm() {
           </div>
         )}
 
-        {/* Phone field if not from query */}
-        {!phoneFromQuery && (
-          <div className="mb-6">
-            <label className="text-sm font-medium text-foreground mb-1 block">رقم الهاتف</label>
-            <div className="relative">
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="07XXXXXXXXX"
-                required
-                dir="ltr"
-                className="w-full pr-10 pl-4 py-3 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition"
-              />
-              <Phone size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit}>
-          {/* OTP Inputs */}
           <div className="flex justify-center gap-2 mb-6" dir="ltr">
             {code.map((digit, index) => (
               <input
@@ -163,7 +282,8 @@ function VerifyPhoneForm() {
             ))}
           </div>
 
-          {/* Resend */}
+          <div id="recaptcha-container" className="absolute -top-96 -left-96 w-1 h-1 overflow-hidden" />
+
           <div className="text-center mb-6">
             <button
               type="button"

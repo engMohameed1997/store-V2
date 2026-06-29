@@ -10,7 +10,7 @@ export const POST = publicRoute(async (request: NextRequest) => {
   const refreshToken = request.cookies.get("refreshToken")?.value;
 
   if (!refreshToken) {
-    const response = apiSuccess(null, "No refresh token provided", 401);
+    const response = apiSuccess(null, "لا يوجد رمز تحديث.", 401);
     response.cookies.delete("refreshToken");
     return response;
   }

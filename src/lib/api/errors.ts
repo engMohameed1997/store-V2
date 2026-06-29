@@ -11,14 +11,14 @@ export class AppError extends Error {
 }
 
 export const Errors = {
-  unauthorized: (message = "Authentication required") =>
+  unauthorized: (message = "يجب تسجيل الدخول أولاً.") =>
     new AppError("UNAUTHORIZED", message, 401),
 
-  forbidden: (message = "Access denied") =>
+  forbidden: (message = "لا تملك صلاحية الوصول.") =>
     new AppError("FORBIDDEN", message, 403),
 
-  notFound: (entity = "Resource") =>
-    new AppError("NOT_FOUND", `${entity} not found`, 404),
+  notFound: (entity = "العنصر") =>
+    new AppError("NOT_FOUND", `${entity} غير موجود.`, 404),
 
   conflict: (message: string) => new AppError("CONFLICT", message, 409),
 
@@ -28,11 +28,11 @@ export const Errors = {
   tooManyRequests: (retryAfter?: number) =>
     new AppError(
       "RATE_LIMITED",
-      `Too many requests. ${retryAfter ? `Retry after ${retryAfter}s` : ""}`,
+      `طلبات كثيرة. ${retryAfter ? `حاول بعد ${retryAfter} ثانية.` : "حاول لاحقاً."}`,
       429
     ),
 
-  internal: (message = "Internal server error") =>
+  internal: (message = "حدث خطأ ما. حاول لاحقاً.") =>
     new AppError("INTERNAL_ERROR", message, 500),
 
   badRequest: (message: string) =>
@@ -41,22 +41,22 @@ export const Errors = {
   accountLocked: (_until?: Date) =>
     new AppError(
       "ACCOUNT_LOCKED",
-      "Account temporarily locked due to too many failed attempts. Try again later.",
+      "تم تأمين الحساب مؤقتاً بسبب محاولات كثيرة فاشلة. حاول لاحقاً.",
       423
     ),
 
   invalidCredentials: () =>
-    new AppError("INVALID_CREDENTIALS", "Invalid email/phone or password", 401),
+    new AppError("INVALID_CREDENTIALS", "البريد/الهاتف أو كلمة المرور غير صحيحة.", 401),
 
   tokenExpired: () =>
-    new AppError("TOKEN_EXPIRED", "Token has expired", 401),
+    new AppError("TOKEN_EXPIRED", "انتهت الجلسة. سجّل الدخول مجدداً.", 401),
 
   tokenRevoked: () =>
-    new AppError("TOKEN_REVOKED", "Token has been revoked", 401),
+    new AppError("TOKEN_REVOKED", "انتهت الجلسة. سجّل الدخول مجدداً.", 401),
 
   phoneNotVerified: () =>
-    new AppError("PHONE_NOT_VERIFIED", "Phone number not verified", 403),
+    new AppError("PHONE_NOT_VERIFIED", "رقم الهاتف غير مُؤكَّد.", 403),
 
   emailNotVerified: () =>
-    new AppError("EMAIL_NOT_VERIFIED", "Email not verified", 403),
+    new AppError("EMAIL_NOT_VERIFIED", "البريد الإلكتروني غير مُؤكَّد.", 403),
 } as const;

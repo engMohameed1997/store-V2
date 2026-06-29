@@ -15,7 +15,7 @@ export const POST = publicRoute(async (request: NextRequest) => {
     userAgent: getUserAgent(request),
   });
 
-  const response = apiSuccess({ user: result.user }, "Login successful");
+  const response = apiSuccess({ user: result.user }, "تم تسجيل الدخول بنجاح.");
 
   // Access token: HttpOnly cookie — never exposed to JavaScript
   const isSecure = process.env.NODE_ENV === "production" && process.env.HTTPS_ENABLED === "true";

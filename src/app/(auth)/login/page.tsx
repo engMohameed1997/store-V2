@@ -1,19 +1,31 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Phone, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { MSG } from '@/lib/messages';
 
-export default function LoginPage() {
+function LoginForm() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needVerify, setNeedVerify] = useState(false);
+  const [identifierInput, setIdentifierInput] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (searchParams.get('registered') === 'true') {
+      toast.success('تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن');
+    }
+    if (searchParams.get('verified') === 'true') {
+      toast.success('تم تأكيد رقم الهاتف بنجاح! يمكنك تسجيل الدخول');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -37,6 +49,7 @@ export default function LoginPage() {
     const formData = new FormData(e.currentTarget);
     const identifier = formData.get('identifier') as string;
     const password = formData.get('password') as string;
+    setIdentifierInput(identifier);
 
     try {
       const result = await login({
@@ -50,6 +63,9 @@ export default function LoginPage() {
         toast.success(MSG.auth.loginSuccess);
         router.push('/');
       } else {
+        if (result.message?.includes('تأكيد') || result.message?.includes('verify')) {
+          setNeedVerify(true);
+        }
         setError(result.message || MSG.auth.invalidCredentials);
         setLoading(false);
       }
@@ -69,7 +85,7 @@ export default function LoginPage() {
             تسجيل الدخول
           </h1>
           <p className="text-sm text-muted-foreground">
-            أدخل بريدك الإلكتروني أو رقم هاتفك للمتابعة
+            أدخل رقم هاتفك للمتابعة
           </p>
         </div>
 
@@ -90,18 +106,20 @@ export default function LoginPage() {
           {/* Identifier Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              البريد الإلكتروني أو رقم الهاتف
+              رقم الهاتف
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
-                <Mail className="h-4 w-4" />
+                <Phone className="h-4 w-4" />
               </div>
               <input
                 type="text"
                 name="identifier"
-                placeholder="name@example.com"
+                placeholder="07XXXXXXXXX"
                 required
                 autoComplete="username"
+                value={identifierInput}
+                onChange={(e) => setIdentifierInput(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
                 dir="ltr"
               />
@@ -151,6 +169,15 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Verify phone link */}
+        {needVerify && (
+          <div className="mt-4 text-center text-sm">
+            <Link href={`/verify-phone?phone=${encodeURIComponent(identifierInput)}`} className="font-medium text-primary hover:underline underline-offset-4">
+              تأكيد رقم الهاتف
+            </Link>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="mt-6 text-center text-sm">
           <span className="text-muted-foreground">ليس لديك حساب؟ </span>
@@ -160,5 +187,17 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

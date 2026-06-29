@@ -9,23 +9,17 @@ export interface LoginPayload {
   deviceId?: string;
 }
 
-export interface RegisterByEmailPayload {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-}
-
 export interface RegisterByPhonePayload {
   phone: string;
   password: string;
   firstName: string;
   lastName: string;
+  firebaseIdToken: string;
 }
 
 export interface VerifyPhonePayload {
   phone: string;
-  code: string;
+  firebaseIdToken: string;
 }
 
 export interface ResetPasswordPayload {
@@ -52,20 +46,16 @@ export const authClient = {
     return postJson<LoginResponse>(`${AUTH_BASE}/login`, payload);
   },
 
-  registerByEmail(payload: RegisterByEmailPayload): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/register`, payload);
-  },
-
-  registerByPhone(payload: RegisterByPhonePayload): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/register`, payload);
-  },
-
-  verifyEmail(token: string): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/verify-email`, { token });
+  registerByPhone(payload: RegisterByPhonePayload): Promise<ApiResult<LoginResponse>> {
+    return postJson<LoginResponse>(`${AUTH_BASE}/register`, payload);
   },
 
   verifyPhone(payload: VerifyPhonePayload): Promise<ApiResult> {
     return postJson(`${AUTH_BASE}/verify-phone`, payload);
+  },
+
+  verifyEmail(token: string): Promise<ApiResult> {
+    return postJson(`${AUTH_BASE}/verify-email`, { token });
   },
 
   forgotPassword(identifier: string): Promise<ApiResult> {
@@ -74,10 +64,6 @@ export const authClient = {
 
   resetPassword(payload: ResetPasswordPayload): Promise<ApiResult> {
     return postJson(`${AUTH_BASE}/reset-password`, payload);
-  },
-
-  resendOtp(phone: string): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/resend-otp`, { phone });
   },
 
   refresh(): Promise<ApiResult<{ user: AuthUser }>> {

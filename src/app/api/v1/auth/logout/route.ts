@@ -10,7 +10,7 @@ export const POST = protectedRoute(async (request: NextRequest) => {
     await AuthService.logout(refreshToken);
   }
 
-  const response = apiSuccess(null, "Logged out successfully");
+  const response = apiSuccess(null, "تم تسجيل الخروج بنجاح.");
 
   response.cookies.delete("accessToken");
   response.cookies.delete("refreshToken");

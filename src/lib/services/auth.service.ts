@@ -14,74 +14,97 @@ import {
 } from "@/lib/api/jwt";
 import type {
   RegisterByPhoneInput,
-  RegisterByEmailInput,
   LoginInput,
   VerifyPhoneInput,
 } from "@/lib/validators/auth";
+import { verifyFirebaseToken, isFirebaseAdminConfigured, deleteFirebaseUser } from "@/lib/firebase/admin";
 
 const SALT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
-const OTP_LENGTH = 6;
-const OTP_EXPIRY_MS = 5 * 60 * 1000;
 
 export class AuthService {
-  static async registerByPhone(input: RegisterByPhoneInput) {
-    const existing = await db.user.findUnique({ where: { phone: input.phone } });
-    
-    // Prevent user enumeration - always return same message
-    if (existing) {
-      // If user exists but not verified, resend OTP
-      if (existing.status === "PENDING_VERIFICATION" && !existing.phoneVerified) {
-        await this.sendPhoneOtp(input.phone, existing.id);
-        return { message: "If the phone number is valid, verification code was sent" };
+  static async registerByPhone(
+    input: RegisterByPhoneInput,
+    meta: { ipAddress: string; userAgent: string }
+  ) {
+    if (!isFirebaseAdminConfigured()) {
+      throw Errors.internal("تعذّر إنشاء الحساب. حاول لاحقاً.");
+    }
+
+    // Verify the Firebase ID token — this confirms the phone number was OTP-verified by Firebase
+    const decodedToken = await verifyFirebaseToken(input.firebaseIdToken);
+    const firebaseUid = decodedToken.uid;
+    const verifiedPhone = decodedToken.phone_number;
+
+    if (!verifiedPhone) {
+      throw Errors.badRequest("تعذّر التحقق من الرقم. حاول لاحقاً.");
+    }
+
+    // Ensure the verified phone matches the requested phone
+    const normalizedInputPhone = input.phone;
+    const normalizedFirebasePhone = verifiedPhone.replace(/^\+964/, "0").replace(/^00964/, "0");
+    const normalizedInputPhoneClean = normalizedInputPhone.replace(/^\+964/, "0").replace(/^00964/, "0");
+    if (normalizedFirebasePhone !== normalizedInputPhoneClean) {
+      throw Errors.badRequest("رقم الهاتف غير مطابق.");
+    }
+
+    try {
+      // Check if user already exists
+      const existing = await db.user.findUnique({ where: { phone: input.phone } });
+      if (existing) {
+        throw Errors.conflict("رقم الهاتف مستخدم بالفعل.");
       }
-      // If user already verified, don't reveal existence
-      return { message: "If the phone number is valid, verification code was sent" };
+
+      const existingUid = await db.user.findUnique({ where: { firebaseUid } });
+      if (existingUid) {
+        throw Errors.conflict("رقم الهاتف مستخدم بالفعل.");
+      }
+
+      const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+
+      const user = await db.user.create({
+        data: {
+          phone: input.phone,
+          firebaseUid,
+          passwordHash,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          status: "ACTIVE",
+          phoneVerified: true,
+          authProvider: "PHONE",
+        },
+        select: { id: true, phone: true, firstName: true, lastName: true, role: true, avatar: true },
+      });
+
+      const accessToken = generateAccessToken(user.id, user.role);
+      const refreshToken = generateRefreshToken(user.id, user.role);
+      const rtPayload = verifyRefreshToken(refreshToken);
+
+      await storeRefreshToken(user.id, refreshToken, rtPayload.family!, meta);
+
+      return {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          avatar: user.avatar,
+        },
+        accessToken,
+        refreshToken,
+        message: "تم إنشاء الحساب بنجاح.",
+      };
+    } catch (err) {
+      // Clean up the orphaned Firebase user if DB operations fail
+      try {
+        await deleteFirebaseUser(firebaseUid);
+      } catch {
+        // Best-effort cleanup; log but don't mask the original error
+      }
+      throw err;
     }
-
-    const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
-
-    const user = await db.user.create({
-      data: {
-        phone: input.phone,
-        passwordHash,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        status: "PENDING_VERIFICATION",
-        authProvider: "CREDENTIALS",
-      },
-      select: { id: true, phone: true, firstName: true, lastName: true, role: true },
-    });
-
-    await this.sendPhoneOtp(input.phone, user.id);
-
-    return { user, message: "If the phone number is valid, verification code was sent" };
-  }
-
-  static async registerByEmail(input: RegisterByEmailInput) {
-    const existing = await db.user.findUnique({ where: { email: input.email } });
-    
-    // Prevent user enumeration - always return same message
-    if (existing) {
-      return { message: "If the email is valid, verification instructions were sent" };
-    }
-
-    const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
-
-    const user = await db.user.create({
-      data: {
-        email: input.email,
-        passwordHash,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        status: "PENDING_VERIFICATION",
-        authProvider: "CREDENTIALS",
-      },
-      select: { id: true, email: true, firstName: true, lastName: true, role: true },
-    });
-
-    return { user, message: "If the email is valid, verification instructions were sent" };
   }
 
   static async login(
@@ -138,10 +161,10 @@ export class AuthService {
       throw Errors.invalidCredentials();
     }
 
-    if (user.status === "BANNED") throw Errors.forbidden("Account is banned");
-    if (user.status === "SUSPENDED") throw Errors.forbidden("Account is suspended");
+    if (user.status === "BANNED") throw Errors.forbidden("تم حظر هذا الحساب.");
+    if (user.status === "SUSPENDED") throw Errors.forbidden("تم تعطيل هذا الحساب.");
     if (user.status === "PENDING_VERIFICATION") {
-      throw Errors.forbidden("Please verify your account before logging in");
+      throw Errors.forbidden("يجب تأكيد حسابك قبل تسجيل الدخول.");
     }
 
     await db.user.update({
@@ -171,6 +194,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        phone: user.phone,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
@@ -204,7 +228,7 @@ export class AuthService {
     });
 
     if (!user || user.status === "BANNED" || user.status === "SUSPENDED") {
-      throw Errors.unauthorized("User not found, banned or suspended");
+      throw Errors.unauthorized("الحساب غير موجود أو معطّل.");
     }
 
     await db.apiToken.update({
@@ -223,6 +247,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        phone: user.phone,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
@@ -244,93 +269,32 @@ export class AuthService {
     await revokeAllUserTokens(userId);
   }
 
-  static async sendPhoneOtp(phone: string, userId?: string) {
-    // Prevent OTP flood: max 3 active OTPs per phone in the expiry window
-    const recentOtps = await db.phoneVerification.count({
-      where: {
-        phone,
-        createdAt: { gte: new Date(Date.now() - OTP_EXPIRY_MS) },
-      },
-    });
-    if (recentOtps >= 3) {
-      throw Errors.tooManyRequests();
-    }
-
-    // Check total failed attempts across ALL recent records for this phone
-    const totalAttempts = await db.phoneVerification.aggregate({
-      where: {
-        phone,
-        verified: false,
-        createdAt: { gte: new Date(Date.now() - LOCK_DURATION_MS) },
-      },
-      _sum: { attempts: true },
-    });
-    if ((totalAttempts._sum.attempts ?? 0) >= 10) {
-      throw Errors.accountLocked();
-    }
-
-    const code = crypto.randomInt(100000, 999999).toString();
-    const codeHash = hashToken(code);
-
-    await db.phoneVerification.create({
-      data: {
-        userId,
-        phone,
-        code: codeHash,
-        expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
-      },
-    });
-
-    // TODO: integrate with SMS provider (e.g. Twilio, local Iraqi SMS gateway)
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[DEV] OTP for ${phone}: ${code}`);
-    }
-
-    return { message: "Verification code sent" };
-  }
-
   static async verifyPhone(input: VerifyPhoneInput) {
-    const codeHash = hashToken(input.code);
-
-    const verification = await db.phoneVerification.findFirst({
-      where: {
-        phone: input.phone,
-        verified: false,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (!verification) throw Errors.badRequest("Invalid or expired code");
-
-    if (verification.attempts >= 5) {
-      throw Errors.tooManyRequests();
+    if (!isFirebaseAdminConfigured()) {
+      throw Errors.badRequest("تعذّر التحقق. حاول لاحقاً.");
     }
 
-    await db.phoneVerification.update({
-      where: { id: verification.id },
-      data: { attempts: { increment: 1 } },
-    });
+    const decodedToken = await verifyFirebaseToken(input.firebaseIdToken);
+    const verifiedPhone = decodedToken.phone_number;
 
-    const isMatch = crypto.timingSafeEqual(
-      Buffer.from(verification.code, "hex"),
-      Buffer.from(codeHash, "hex")
-    );
-    if (!isMatch) {
-      throw Errors.badRequest("Invalid verification code");
+    if (!verifiedPhone) {
+      throw Errors.badRequest("تعذّر التحقق من الرقم. حاول لاحقاً.");
     }
 
-    await db.phoneVerification.update({
-      where: { id: verification.id },
-      data: { verified: true },
-    });
-
-    if (verification.userId) {
-      await db.user.update({
-        where: { id: verification.userId },
-        data: { phoneVerified: true, status: "ACTIVE" },
-      });
+    const normalizedFirebasePhone = verifiedPhone.replace(/^\+964/, "0").replace(/^00964/, "0");
+    const normalizedInputPhone = input.phone.replace(/^\+964/, "0").replace(/^00964/, "0");
+    if (normalizedFirebasePhone !== normalizedInputPhone) {
+      throw Errors.badRequest("رقم الهاتف غير مطابق.");
     }
+
+    const user = await db.user.findUnique({ where: { phone: input.phone } });
+    if (!user) {
+      throw Errors.notFound("المستخدم");
+    }
+    await db.user.update({
+      where: { id: user.id },
+      data: { phoneVerified: true, status: "ACTIVE", firebaseUid: decodedToken.uid },
+    });
 
     return { verified: true };
   }
@@ -350,7 +314,7 @@ export class AuthService {
     });
 
     // Always return success to prevent user enumeration
-    if (!user) return { message: "If the account exists, reset instructions were sent" };
+    if (!user) return { message: "إذا كان الحساب موجوداً، تم إرسال تعليمات الاستعادة." };
 
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = hashToken(token);
@@ -369,19 +333,14 @@ export class AuthService {
         console.log(`[DEV] Reset token for ${identifier}: ${token}`);
       }
     } else {
-      await this.sendPhoneOtp(identifier, user.id);
+      // Phone password reset: return the reset token for client-side Firebase OTP flow
+      // The client will verify the phone via Firebase, then call resetPassword with the token
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[DEV] Reset token for ${identifier}: ${token}`);
+      }
     }
 
-    return { message: "If the account exists, reset instructions were sent" };
-  }
-
-  static async resendOtp(phone: string) {
-    const user = await db.user.findUnique({ where: { phone } });
-    // Prevent enumeration – always return same message
-    if (!user) return { message: "If the phone number is valid, a new code was sent" };
-
-    await this.sendPhoneOtp(phone, user.id);
-    return { message: "If the phone number is valid, a new code was sent" };
+    return { message: "إذا كان الحساب موجوداً، تم إرسال تعليمات الاستعادة." };
   }
 
   static async verifyEmail(tokenStr: string) {
@@ -391,7 +350,7 @@ export class AuthService {
       where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
     });
 
-    if (!verification) throw Errors.badRequest("Invalid or expired verification link");
+    if (!verification) throw Errors.badRequest("رابط التحقق غير صالح أو منتهي الصلاحية.");
 
     await db.emailVerification.update({
       where: { id: verification.id },
@@ -410,10 +369,10 @@ export class AuthService {
 
   static async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = await db.user.findUnique({ where: { id: userId } });
-    if (!user || !user.passwordHash) throw Errors.badRequest("Cannot change password");
+    if (!user || !user.passwordHash) throw Errors.badRequest("تعذّر تغيير كلمة المرور.");
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!valid) throw Errors.badRequest("Current password is incorrect");
+    if (!valid) throw Errors.badRequest("كلمة المرور الحالية غير صحيحة.");
 
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
     await db.user.update({
@@ -421,7 +380,7 @@ export class AuthService {
       data: { passwordHash },
     });
 
-    return { message: "Password changed successfully" };
+    return { message: "تم تغيير كلمة المرور بنجاح." };
   }
 
   static async resetPassword(tokenStr: string, newPassword: string) {
@@ -434,14 +393,14 @@ export class AuthService {
         where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
       });
 
-      if (!resetToken) throw Errors.badRequest("Invalid or expired reset token");
+      if (!resetToken) throw Errors.badRequest("رمز الاستعادة غير صالح أو منتهي الصلاحية.");
 
       // Atomically mark as used to prevent race condition (double-use)
       const marked = await tx.passwordResetToken.updateMany({
         where: { id: resetToken.id, usedAt: null },
         data: { usedAt: new Date() },
       });
-      if (marked.count === 0) throw Errors.badRequest("Token already used");
+      if (marked.count === 0) throw Errors.badRequest("تم استخدام هذا الرمز بالفعل.");
 
       await tx.user.update({
         where: { id: resetToken.userId },
@@ -453,6 +412,6 @@ export class AuthService {
 
     await revokeAllUserTokens(userId);
 
-    return { message: "Password reset successful" };
+    return { message: "تم استعادة كلمة المرور بنجاح." };
   }
 }
