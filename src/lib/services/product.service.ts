@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
 import type { CreateProductInput, UpdateProductInput } from "@/lib/validators/product";
 import { MAX_PAGINATION_LIMIT } from "@/lib/constants/pagination";
+import { sanitizeString } from "@/lib/api/sanitize";
 
 // View deduplication: prevents viewCount inflation (1 count per IP per product per hour)
 // Uses Redis instead of in-memory Map to work correctly across multiple instances/pods.
@@ -242,46 +243,101 @@ export class ProductService {
   }
 
   static async create(input: CreateProductInput) {
+    // ── Sanitize all free-text string fields against XSS ──────────────────
+    const sanitizedInput: CreateProductInput = {
+      ...input,
+      name: sanitizeString(input.name),
+      nameAr: input.nameAr ? sanitizeString(input.nameAr) : undefined,
+      description: input.description ? sanitizeString(input.description) : undefined,
+      descriptionAr: input.descriptionAr ? sanitizeString(input.descriptionAr) : undefined,
+      metaTitle: input.metaTitle ? sanitizeString(input.metaTitle) : undefined,
+      metaDescription: input.metaDescription ? sanitizeString(input.metaDescription) : undefined,
+      warrantyCoverage: input.warrantyCoverage ? sanitizeString(input.warrantyCoverage) : undefined,
+      images: input.images?.map((img) => ({
+        ...img,
+        alt: img.alt ? sanitizeString(img.alt) : undefined,
+      })),
+      specs: input.specs?.map((s) => ({
+        ...s,
+        key: sanitizeString(s.key),
+        value: sanitizeString(s.value),
+      })),
+      variants: input.variants?.map((v) => ({
+        ...v,
+        name: sanitizeString(v.name),
+      })),
+    };
+
+    // Verify branch exists before creating the product
+    if (sanitizedInput.branchId) {
+      const branch = await db.branch.findUnique({
+        where: { id: sanitizedInput.branchId },
+        select: { id: true },
+      });
+      if (!branch) throw Errors.notFound("Branch");
+    }
+
     // Generate unique slug with retry for extremely rare collisions
-    let finalSlug = generateSlug(input.name);
+    let finalSlug = generateSlug(sanitizedInput.name);
     for (let attempt = 0; attempt < 5; attempt++) {
       const existing = await db.product.findUnique({ where: { slug: finalSlug }, select: { id: true } });
       if (!existing) break;
-      finalSlug = generateSlug(input.name);
+      finalSlug = generateSlug(sanitizedInput.name);
     }
 
     const sku = await generateUniqueSku();
 
-    const { images, specs, variants, branchId, ...productData } = input;
+    const { images, specs, variants, branchId, ...productData } = sanitizedInput;
 
-    const product = await db.product.create({
-      data: {
-        ...productData,
-        slug: finalSlug,
-        sku,
-        images: images ? { createMany: { data: images } } : undefined,
-        specs: specs ? { createMany: { data: specs } } : undefined,
-        variants: variants
-          ? {
-              create: variants.map((v, i) => ({
-                name: v.name,
-                sku: `${sku}-V${i + 1}`,
-                price: v.price,
-                stock: v.stock,
-                attributes: v.attributes
-                  ? { createMany: { data: v.attributes } }
-                  : undefined,
-              })),
-            }
-          : undefined,
-      },
-      include: PRODUCT_INCLUDE,
+    // ── Use transaction so product + branch inventory are atomic ──────────
+    const product = await db.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          ...productData,
+          slug: finalSlug,
+          sku,
+          images: images ? { createMany: { data: images } } : undefined,
+          specs: specs ? { createMany: { data: specs } } : undefined,
+          variants: variants
+            ? {
+                create: variants.map((v, i) => ({
+                  name: v.name,
+                  sku: `${sku}-V${i + 1}`,
+                  price: v.price,
+                  stock: v.stock,
+                  attributes: v.attributes
+                    ? { createMany: { data: v.attributes } }
+                    : undefined,
+                })),
+              }
+            : undefined,
+        },
+        include: PRODUCT_INCLUDE,
+      });
+
+      if (branchId) {
+        const existingInv = await tx.branchInventory.findFirst({
+          where: { branchId, productId: created.id, variantId: null },
+        });
+        if (existingInv) {
+          await tx.branchInventory.update({
+            where: { id: existingInv.id },
+            data: { stock: sanitizedInput.stock || 0 },
+          });
+        } else {
+          await tx.branchInventory.create({
+            data: {
+              branchId,
+              productId: created.id,
+              variantId: null,
+              stock: sanitizedInput.stock || 0,
+            },
+          });
+        }
+      }
+
+      return created;
     });
-
-    if (branchId) {
-      const { BranchService } = await import("./branch.service");
-      await BranchService.setInventory(branchId, product.id, null, input.stock || 0);
-    }
 
     return product;
   }
@@ -290,52 +346,114 @@ export class ProductService {
     const existing = await db.product.findUnique({ where: { id, deletedAt: null } });
     if (!existing) throw Errors.notFound("Product");
 
-    const { images, specs, variants, branchId, ...productData } = input;
+    // ── Sanitize all free-text string fields against XSS ──────────────────
+    const sanitizedInput: UpdateProductInput = {
+      ...input,
+      name: input.name ? sanitizeString(input.name) : undefined,
+      nameAr: input.nameAr ? sanitizeString(input.nameAr) : undefined,
+      description: input.description ? sanitizeString(input.description) : undefined,
+      descriptionAr: input.descriptionAr ? sanitizeString(input.descriptionAr) : undefined,
+      metaTitle: input.metaTitle ? sanitizeString(input.metaTitle) : undefined,
+      metaDescription: input.metaDescription ? sanitizeString(input.metaDescription) : undefined,
+      warrantyCoverage: input.warrantyCoverage ? sanitizeString(input.warrantyCoverage) : undefined,
+      images: input.images?.map((img) => ({
+        ...img,
+        alt: img.alt ? sanitizeString(img.alt) : undefined,
+      })),
+      specs: input.specs?.map((s) => ({
+        ...s,
+        key: sanitizeString(s.key),
+        value: sanitizeString(s.value),
+      })),
+      variants: input.variants?.map((v) => ({
+        ...v,
+        name: sanitizeString(v.name),
+      })),
+    };
+
+    // Verify branch exists before updating the product
+    if (sanitizedInput.branchId) {
+      const branch = await db.branch.findUnique({
+        where: { id: sanitizedInput.branchId },
+        select: { id: true },
+      });
+      if (!branch) throw Errors.notFound("Branch");
+    }
+
+    const { images, specs, variants, branchId, ...productData } = sanitizedInput;
 
     let slugData = {};
-    if (input.name && input.name !== existing.name) {
-      let newSlug = generateSlug(input.name);
+    if (sanitizedInput.name && sanitizedInput.name !== existing.name) {
+      let newSlug = generateSlug(sanitizedInput.name);
       for (let attempt = 0; attempt < 5; attempt++) {
         const slugExists = await db.product.findFirst({
           where: { slug: newSlug, id: { not: id } },
           select: { id: true },
         });
         if (!slugExists) break;
-        newSlug = generateSlug(input.name);
+        newSlug = generateSlug(sanitizedInput.name);
       }
       slugData = { slug: newSlug };
     }
 
-    if (images) {
-      await db.productImage.deleteMany({ where: { productId: id } });
-    }
-    if (specs) {
-      await db.productSpec.deleteMany({ where: { productId: id } });
-    }
+    // ── Use transaction: delete old images/specs + update + branch inv ────
+    const updatedProduct = await db.$transaction(async (tx) => {
+      if (images) {
+        await tx.productImage.deleteMany({ where: { productId: id } });
+      }
+      if (specs) {
+        await tx.productSpec.deleteMany({ where: { productId: id } });
+      }
+      if (variants) {
+        await tx.productVariant.deleteMany({ where: { productId: id } });
+      }
 
-    const updatedProduct = await db.product.update({
-      where: { id },
-      data: {
-        ...productData,
-        ...slugData,
-        images: images ? { createMany: { data: images } } : undefined,
-        specs: specs ? { createMany: { data: specs } } : undefined,
-      },
-      include: PRODUCT_INCLUDE,
+      const cleanProductData = Object.fromEntries(
+        Object.entries(productData).filter(([, v]) => v !== undefined)
+      );
+
+      const updated = await tx.product.update({
+        where: { id },
+        data: {
+          ...cleanProductData,
+          ...slugData,
+          images: images ? { createMany: { data: images } } : undefined,
+          specs: specs ? { createMany: { data: specs } } : undefined,
+          variants: variants
+            ? {
+                create: variants.map((v, i) => ({
+                  name: v.name,
+                  sku: `${existing.sku}-V${i + 1}`,
+                  price: v.price,
+                  stock: v.stock,
+                  attributes: v.attributes
+                    ? { createMany: { data: v.attributes } }
+                    : undefined,
+                })),
+              }
+            : undefined,
+        },
+        include: PRODUCT_INCLUDE,
+      });
+
+      if (branchId !== undefined) {
+        await tx.branchInventory.deleteMany({ where: { productId: id } });
+        if (branchId) {
+          await tx.branchInventory.create({
+            data: {
+              branchId,
+              productId: id,
+              variantId: null,
+              stock: sanitizedInput.stock ?? updated.stock,
+            },
+          });
+        }
+      }
+
+      return updated;
     });
 
-    if (branchId !== undefined) {
-      await db.branchInventory.deleteMany({ where: { productId: id } });
-      if (branchId) {
-        const { BranchService } = await import("./branch.service");
-        await BranchService.setInventory(branchId, id, null, input.stock ?? updatedProduct.stock);
-      }
-    }
-
-    return db.product.findUnique({
-      where: { id },
-      include: PRODUCT_INCLUDE,
-    }) as any;
+    return updatedProduct;
   }
 
   static async softDelete(id: string) {

@@ -1,31 +1,29 @@
 import { NextRequest } from "next/server";
 import { adminRoute } from "@/lib/api/route-handler";
-import { apiSuccess, apiPaginated, apiCreated } from "@/lib/api/response";
-import { validateBody } from "@/lib/api/validate";
-import { createProductSchema } from "@/lib/validators/product";
+import { apiPaginated, apiCreated } from "@/lib/api/response";
+import { validateBody, validateQuery } from "@/lib/api/validate";
+import { createProductSchema, productSearchSchema } from "@/lib/validators/product";
 import { ProductService } from "@/lib/services/product.service";
 import { sanitizeSearchQuery } from "@/lib/api/sanitize";
 
 export const GET = adminRoute(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
+  const query = validateQuery(searchParams, productSearchSchema);
 
-  const isActiveParam = searchParams.get("isActive");
-  const isActive = isActiveParam === "true" ? true : isActiveParam === "false" ? false : undefined;
+  const isActive = query.isActive === "true" ? true : query.isActive === "false" ? false : undefined;
 
   const result = await ProductService.list({
-    search: searchParams.get("search")
-      ? sanitizeSearchQuery(searchParams.get("search")!)
-      : undefined,
-    category: searchParams.get("category") || undefined,
-    brand: searchParams.get("brand") || undefined,
-    page: Number(searchParams.get("page") || 1),
-    limit: Number(searchParams.get("limit") || 20),
-    sortBy: searchParams.get("sortBy") || undefined,
-    sortOrder: (searchParams.get("sortOrder") as "asc" | "desc") || undefined,
+    search: query.search ? sanitizeSearchQuery(query.search) : undefined,
+    category: query.category || undefined,
+    brand: query.brand || undefined,
+    page: query.page || 1,
+    limit: query.limit || 20,
+    sortBy: query.sortBy || undefined,
+    sortOrder: query.sortOrder || undefined,
     activeOnly: false,
     isActive,
-    branchId: searchParams.get("branchId") || undefined,
-    stockStatus: (searchParams.get("stockStatus") as "all" | "in_stock" | "out_of_stock") || undefined,
+    branchId: query.branchId || undefined,
+    stockStatus: query.stockStatus || undefined,
   });
 
   return apiPaginated(result.products, result.total, result.page, result.limit);

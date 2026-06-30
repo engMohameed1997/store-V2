@@ -25,9 +25,13 @@ export const GET = publicRoute(async (request: NextRequest) => {
     }).catch(err => logger.warn("Failed to log search history", { error: err }));
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { isActive: _isActiveStr, ...restFilters } = filters;
+
   const result = await ProductService.list({
-    ...filters,
+    ...restFilters,
     search: sanitizedQuery,
+    isActive: true,
   });
 
   return apiPaginated(result.products, result.total, result.page, result.limit);
