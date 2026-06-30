@@ -1,17 +1,17 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, ArrowRight } from 'lucide-react';
 import { authClient } from '@/lib/client/auth';
 import { MSG } from '@/lib/messages';
 
-function ResetPasswordForm() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const token = searchParams.get('token');
+const RESET_TOKEN_KEY = 'reset_token';
 
+function ResetPasswordForm() {
+  const router = useRouter();
+  const [token, setToken] = useState<string | null>(null);
   const [status, setStatus] = useState<'form' | 'success'>('form');
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -19,10 +19,13 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    const stored = sessionStorage.getItem(RESET_TOKEN_KEY);
+    if (!stored) {
       router.replace('/forgot-password');
+      return;
     }
-  }, [token, router]);
+    setToken(stored);
+  }, [router]);
 
   if (!token) {
     return null;
@@ -45,6 +48,7 @@ function ResetPasswordForm() {
     try {
       const result = await authClient.resetPassword({ token, password, confirmPassword });
       if (result.success) {
+        sessionStorage.removeItem(RESET_TOKEN_KEY);
         setStatus('success');
       } else {
         setError(result.error?.message || MSG.auth.resetLinkInvalid);

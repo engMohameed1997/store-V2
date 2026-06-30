@@ -49,7 +49,7 @@ export default function ProductCard({ product }: Props) {
   };
 
   return (
-    <div className="product-card group">
+    <div className="product-card group flex flex-col h-full">
       {/* Image */}
       <Link
         href={`/products/${product.slug}`}
@@ -108,40 +108,45 @@ export default function ProductCard({ product }: Props) {
         </div>
       </Link>
 
-      {/* Rating */}
-      {product.reviewCount > 0 && (
-        <div className="flex items-center gap-1 mb-1.5">
-          {[...Array(5)].map((_, i) => (
-            <Star
-              key={i}
-              size={12}
-              className={i < Math.floor(rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}
-            />
-          ))}
-          <span className="text-xs text-muted-foreground mr-1">({product.reviewCount})</span>
+      {/* Content (flex-1 pushes button to bottom) */}
+      <div className="flex-1 flex flex-col">
+        {/* Rating */}
+        <div className="flex items-center gap-1 mb-1.5 min-h-[1.25rem]">
+          {product.reviewCount > 0 && <>
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                size={12}
+                className={i < Math.floor(rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}
+              />
+            ))}
+            <span className="text-xs text-muted-foreground mr-1">({product.reviewCount})</span>
+          </>}
         </div>
-      )}
 
-      {/* Name */}
-      <Link href={`/products/${product.slug}`} className="block">
-        <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-2 min-h-[2.5rem] hover:text-primary transition leading-relaxed">
-          {product.nameAr || product.name}
-        </h3>
-      </Link>
+        {/* Name */}
+        <Link href={`/products/${product.slug}`} className="block">
+          <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-2 min-h-[2.5rem] hover:text-primary transition leading-relaxed">
+            {product.nameAr || product.name}
+          </h3>
+        </Link>
 
-      {/* Brand */}
-      {product.brand && (
-        <p className="text-xs text-muted-foreground mb-2">{product.brand.name}</p>
-      )}
+        {/* Brand */}
+        <div className="min-h-[1.25rem] mb-2">
+          {product.brand && (
+            <p className="text-xs text-muted-foreground">{product.brand.name}</p>
+          )}
+        </div>
 
-      {/* Price */}
-      <div className="flex items-baseline gap-2 mb-3">
-        <span className="text-base font-bold text-primary">
-          {formatPrice(price)} <span className="text-[10px] font-normal">د.ع</span>
-        </span>
-        {compareAtPrice && compareAtPrice > price && (
-          <span className="text-xs text-muted-foreground line-through">{formatPrice(compareAtPrice)}</span>
-        )}
+        {/* Price */}
+        <div className="flex items-baseline gap-2 mb-3 mt-auto">
+          <span className="text-base font-bold text-primary">
+            {formatPrice(price)} <span className="text-[10px] font-normal">د.ع</span>
+          </span>
+          {compareAtPrice && compareAtPrice > price && (
+            <span className="text-xs text-muted-foreground line-through">{formatPrice(compareAtPrice)}</span>
+          )}
+        </div>
       </div>
 
       {/* Add to Cart */}

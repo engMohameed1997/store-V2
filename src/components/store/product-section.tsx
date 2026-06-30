@@ -56,7 +56,7 @@ export default function ProductSection({ title, products, viewAllLink }: Props) 
 
         <div ref={scrollRef} className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-1">
           {products.map(product => (
-            <div key={product.id} className="flex-shrink-0 w-[180px] md:w-[220px]">
+            <div key={product.id} className="flex-shrink-0 w-[180px] md:w-[220px] h-[380px] md:h-[420px]">
               <ProductCard product={product} />
             </div>
           ))}

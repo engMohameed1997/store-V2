@@ -42,16 +42,33 @@ export default function ForgotPasswordPage() {
   }, [cooldown]);
 
   useEffect(() => {
+    const handler = (e: ErrorEvent) => {
+      if (e.message && (e.message.includes('recaptcha') || e.message.includes('reCAPTCHA') || e.filename?.includes('recaptcha'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    };
+    window.addEventListener('error', handler);
+    return () => window.removeEventListener('error', handler);
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
+        try { recaptchaVerifierRef.current.clear(); } catch { /* ignore */ }
         recaptchaVerifierRef.current = null;
       }
     };
   }, []);
 
   const setupRecaptcha = useCallback(async () => {
-    if (recaptchaVerifierRef.current) return recaptchaVerifierRef.current;
+    if (recaptchaVerifierRef.current) {
+      try { recaptchaVerifierRef.current.clear(); } catch { /* ignore */ }
+      recaptchaVerifierRef.current = null;
+    }
+    const container = document.getElementById('recaptcha-container');
+    if (container) container.innerHTML = '';
     const auth = getFirebaseAuth();
     const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
       size: 'invisible',
@@ -102,8 +119,7 @@ export default function ForgotPasswordPage() {
       setPhone(phoneValue);
       setStep('otp');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : MSG.common.unexpected;
-      setError(msg);
+      setError(getFirebaseErrorMessage(err));
       if (recaptchaVerifierRef.current) {
         try { recaptchaVerifierRef.current.clear(); } catch { /* ignore */ }
         recaptchaVerifierRef.current = null;
@@ -170,7 +186,8 @@ export default function ForgotPasswordPage() {
       });
       if (result.success) {
         if (result.data) {
-          router.push(`/reset-password?token=${encodeURIComponent(result.data.token)}`);
+          sessionStorage.setItem('reset_token', result.data.token);
+          router.push('/reset-password');
         }
       } else {
         setError(result.error?.message || MSG.auth.otpInvalid);
@@ -200,8 +217,7 @@ export default function ForgotPasswordPage() {
       setOtp(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : MSG.common.unexpected;
-      setError(msg);
+      setError(getFirebaseErrorMessage(err));
     } finally {
       setResending(false);
     }
@@ -209,6 +225,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full max-w-md">
+      <div id="recaptcha-container" className="absolute -top-96 -left-96 w-1 h-1 overflow-hidden" />
       <div className="bg-card rounded-2xl border border-border p-8 shadow-lg">
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
@@ -259,8 +276,6 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <div id="recaptcha-container" className="absolute -top-96 -left-96 w-1 h-1 overflow-hidden" />
-
               <button
                 type="submit"
                 disabled={loading}
@@ -306,8 +321,6 @@ export default function ForgotPasswordPage() {
                   />
                 ))}
               </div>
-
-              <div id="recaptcha-container" className="absolute -top-96 -left-96 w-1 h-1 overflow-hidden" />
 
               <button
                 type="submit"
