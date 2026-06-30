@@ -1,24 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, ArrowRight } from 'lucide-react';
 import { authClient } from '@/lib/client/auth';
 import { MSG } from '@/lib/messages';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const token = searchParams.get('token');
+
   const [status, setStatus] = useState<'form' | 'success'>('form');
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!token) {
+      router.replace('/forgot-password');
+    }
+  }, [token, router]);
+
+  if (!token) {
+    return null;
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
     const fd = new FormData(e.currentTarget);
-    const token = fd.get('token') as string;
     const password = fd.get('newPassword') as string;
     const confirmPassword = fd.get('confirmPassword') as string;
 
@@ -29,11 +43,11 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      const result = await authClient.resetPassword({ token, password });
+      const result = await authClient.resetPassword({ token, password, confirmPassword });
       if (result.success) {
         setStatus('success');
-      } else if (!result.success) {
-        setError(result.error.message || MSG.auth.resetLinkInvalid);
+      } else {
+        setError(result.error?.message || MSG.auth.resetLinkInvalid);
       }
     } catch {
       setError(MSG.common.unexpected);
@@ -66,9 +80,11 @@ export default function ResetPasswordPage() {
     <div className="w-full max-w-md">
       <div className="bg-card rounded-2xl border border-border p-8 shadow-lg">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-3">🔒</div>
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+            <Lock size={26} className="text-primary" />
+          </div>
           <h1 className="text-2xl font-bold text-foreground">إعادة تعيين كلمة المرور</h1>
-          <p className="text-muted-foreground text-sm mt-1">أدخل رمز الاستعادة وكلمة المرور الجديدة</p>
+          <p className="text-muted-foreground text-sm mt-1">أدخل كلمة المرور الجديدة</p>
         </div>
 
         {error && (
@@ -78,19 +94,6 @@ export default function ResetPasswordPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">رمز الاستعادة</label>
-            <input
-              type="text"
-              name="token"
-              placeholder="أدخل رمز الاستعادة"
-              required
-              dir="ltr"
-              autoComplete="one-time-code"
-              className="w-full px-4 py-3 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition"
-            />
-          </div>
-
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">كلمة المرور الجديدة</label>
             <div className="relative">
@@ -150,5 +153,13 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

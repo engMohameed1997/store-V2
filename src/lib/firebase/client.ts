@@ -18,7 +18,9 @@ function getFirebaseApp() {
 
 export function getFirebaseAuth() {
   const auth = getAuth(getFirebaseApp());
-  auth.settings.appVerificationDisabledForTesting = true;
+  if (process.env.NODE_ENV === "test") {
+    auth.settings.appVerificationDisabledForTesting = true;
+  }
   return auth;
 }
 
@@ -34,4 +36,9 @@ export function isFirebaseClientConfigured(): boolean {
 export function normalizePhoneForFirebase(raw: string): string {
   const cleaned = raw.replace(/^(\+964|00964|0)/, '');
   return `+964${cleaned}`;
+}
+
+export function normalizeIraqiPhone(raw: string): { e164: string; local: string } {
+  const cleaned = raw.replace(/^(\+964|00964|0)/, '');
+  return { e164: `+964${cleaned}`, local: `0${cleaned}` };
 }

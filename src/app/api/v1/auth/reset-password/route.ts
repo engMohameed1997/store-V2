@@ -10,3 +10,4 @@ export const POST = publicRoute(async (request: NextRequest) => {
   const result = await AuthService.resetPassword(input.token, input.password);
   return apiSuccess(result);
 }, "strict");
+

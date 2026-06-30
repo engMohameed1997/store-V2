@@ -55,12 +55,21 @@ export const verifyPhoneSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  identifier: z.string().min(1, "البريد أو الهاتف مطلوب"),
+  phone: iraqiPhone,
+});
+
+export const verifyResetOtpSchema = z.object({
+  phone: iraqiPhone,
+  firebaseIdToken: z.string().min(1, "رمز التحقق مطلوب"),
 });
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, "الرمز مطلوب"),
   password: strongPassword,
+  confirmPassword: strongPassword,
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "كلمتا المرور غير متطابقتين.",
+  path: ["confirmPassword"],
 });
 
 export const changePasswordSchema = z.object({
@@ -73,5 +82,6 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type VerifyPhoneInput = z.infer<typeof verifyPhoneSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type VerifyResetOtpInput = z.infer<typeof verifyResetOtpSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

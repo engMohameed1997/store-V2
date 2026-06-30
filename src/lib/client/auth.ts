@@ -27,6 +27,17 @@ export interface VerifyPhonePayload {
 export interface ResetPasswordPayload {
   token: string;
   password: string;
+  confirmPassword: string;
+}
+
+export interface VerifyResetOtpPayload {
+  phone: string;
+  firebaseIdToken: string;
+}
+
+export interface VerifyResetOtpResponse {
+  token: string;
+  message: string;
 }
 
 export interface AuthUser {
@@ -64,8 +75,12 @@ export const authClient = {
     return postJson(`${AUTH_BASE}/verify-phone`, payload);
   },
 
-  forgotPassword(identifier: string): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/forgot-password`, { identifier });
+  forgotPassword(phone: string): Promise<ApiResult> {
+    return postJson(`${AUTH_BASE}/forgot-password`, { phone });
+  },
+
+  verifyResetOtp(payload: VerifyResetOtpPayload): Promise<ApiResult<VerifyResetOtpResponse>> {
+    return postJson<VerifyResetOtpResponse>(`${AUTH_BASE}/verify-reset-otp`, payload);
   },
 
   resetPassword(payload: ResetPasswordPayload): Promise<ApiResult> {

@@ -16,12 +16,15 @@ import type {
   RegisterByPhoneInput,
   LoginInput,
   VerifyPhoneInput,
+  VerifyResetOtpInput,
 } from "@/lib/validators/auth";
 import { verifyFirebaseToken, isFirebaseAdminConfigured, deleteFirebaseUser } from "@/lib/firebase/admin";
+import { normalizeIraqiPhone } from "@/lib/firebase/client";
 
 const SALT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
+const RESET_TOKEN_EXPIRY_MS = 5 * 60 * 1000;
 
 export class AuthService {
   static async registerByPhone(
@@ -42,18 +45,17 @@ export class AuthService {
     }
 
     // Ensure the verified phone matches the requested phone
-    const normalizedInputPhone = input.phone;
-    const normalizedFirebasePhone = verifiedPhone.replace(/^\+964/, "0").replace(/^00964/, "0");
-    const normalizedInputPhoneClean = normalizedInputPhone.replace(/^\+964/, "0").replace(/^00964/, "0");
-    if (normalizedFirebasePhone !== normalizedInputPhoneClean) {
+    const { local: firebaseLocal } = normalizeIraqiPhone(verifiedPhone);
+    const { local: inputLocal } = normalizeIraqiPhone(input.phone);
+    if (firebaseLocal !== inputLocal) {
       throw Errors.badRequest("رقم الهاتف غير مطابق.");
     }
 
     try {
       // Check if user already exists (check both +964 and 0 prefix formats)
-      const altPhone = input.phone.replace(/^\+964/, "0");
+      const { e164, local } = normalizeIraqiPhone(input.phone);
       const existing = await db.user.findFirst({
-        where: { phone: { in: [input.phone, altPhone] } },
+        where: { phone: { in: [e164, local] } },
       });
       if (existing) {
         throw Errors.conflict("رقم الهاتف مستخدم بالفعل.");
@@ -284,13 +286,14 @@ export class AuthService {
       throw Errors.badRequest("تعذّر التحقق من الرقم. حاول لاحقاً.");
     }
 
-    const normalizedFirebasePhone = verifiedPhone.replace(/^\+964/, "0").replace(/^00964/, "0");
-    const normalizedInputPhone = input.phone.replace(/^\+964/, "0").replace(/^00964/, "0");
-    if (normalizedFirebasePhone !== normalizedInputPhone) {
+    const { local: firebaseLocal } = normalizeIraqiPhone(verifiedPhone);
+    const { local: inputLocal } = normalizeIraqiPhone(input.phone);
+    if (firebaseLocal !== inputLocal) {
       throw Errors.badRequest("رقم الهاتف غير مطابق.");
     }
 
-    const user = await db.user.findUnique({ where: { phone: input.phone } });
+    const { e164 } = normalizeIraqiPhone(input.phone);
+    const user = await db.user.findUnique({ where: { phone: e164 } });
     if (!user) {
       throw Errors.notFound("المستخدم");
     }
@@ -302,48 +305,79 @@ export class AuthService {
     return { verified: true };
   }
 
-  static async forgotPassword(identifier: string) {
-    const isEmail = identifier.includes("@");
-
-    // Normalize Iraqi phone before lookup
-    let lookupIdentifier = identifier;
-    if (!isEmail) {
-      const cleaned = identifier.replace(/^(\+964|00964|0)/, "");
-      if (/^7[3-9]\d{8}$/.test(cleaned)) lookupIdentifier = `+964${cleaned}`;
-    }
+  static async forgotPassword(phone: string) {
+    const { e164, local } = normalizeIraqiPhone(phone);
 
     const user = await db.user.findFirst({
-      where: isEmail ? { email: lookupIdentifier } : { phone: lookupIdentifier },
+      where: { phone: { in: [e164, local] } },
+      select: { id: true },
     });
 
-    // Always return success to prevent user enumeration
-    if (!user) return { message: "إذا كان الحساب موجوداً، تم إرسال تعليمات الاستعادة." };
+    // Always return the same message to prevent user enumeration
+    if (!user) {
+      return { message: "إذا كان الحساب موجوداً، تم إرسال رمز التحقق إلى رقمك." };
+    }
 
+    // Invalidate all previous unused tokens for this user
+    await db.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    // OTP is sent by Firebase client-side (signInWithPhoneNumber)
+    // No server-side OTP generation needed
+
+    return { message: "إذا كان الحساب موجوداً، تم إرسال رمز التحقق إلى رقمك." };
+  }
+
+  static async verifyResetOtp(input: VerifyResetOtpInput) {
+    if (!isFirebaseAdminConfigured()) {
+      throw Errors.badRequest("تعذّر التحقق. حاول لاحقاً.");
+    }
+
+    // Verify the Firebase ID token — this confirms the phone number was OTP-verified by Firebase
+    const decodedToken = await verifyFirebaseToken(input.firebaseIdToken);
+    const verifiedPhone = decodedToken.phone_number;
+
+    if (!verifiedPhone) {
+      throw Errors.badRequest("تعذّر التحقق من الرقم. حاول لاحقاً.");
+    }
+
+    // Ensure the verified phone matches the requested phone
+    const { local: firebaseLocal } = normalizeIraqiPhone(verifiedPhone);
+    const { local: inputLocal } = normalizeIraqiPhone(input.phone);
+    if (firebaseLocal !== inputLocal) {
+      throw Errors.badRequest("رقم الهاتف غير مطابق.");
+    }
+
+    const { e164, local } = normalizeIraqiPhone(input.phone);
+
+    // Check if user exists — generic error to avoid account enumeration
+    const user = await db.user.findFirst({
+      where: { phone: { in: [e164, local] } },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw Errors.badRequest("رمز التحقق غير صحيح أو منتهي الصلاحية.");
+    }
+
+    // Generate a reset token
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = hashToken(token);
 
     await db.passwordResetToken.create({
       data: {
         userId: user.id,
+        phone: e164,
         tokenHash,
-        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        attempts: 0,
+        verifiedAt: new Date(),
+        expiresAt: new Date(Date.now() + RESET_TOKEN_EXPIRY_MS),
       },
     });
 
-    if (isEmail) {
-      // TODO: Send email
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[DEV] Reset token for ${identifier}: ${token}`);
-      }
-    } else {
-      // Phone password reset: return the reset token for client-side Firebase OTP flow
-      // The client will verify the phone via Firebase, then call resetPassword with the token
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[DEV] Reset token for ${identifier}: ${token}`);
-      }
-    }
-
-    return { message: "إذا كان الحساب موجوداً، تم إرسال تعليمات الاستعادة." };
+    return { token, message: "تم التحقق بنجاح. يمكنك الآن تعيين كلمة مرور جديدة." };
   }
 
   static async changePassword(userId: string, currentPassword: string, newPassword: string) {
@@ -369,10 +403,15 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = await db.$transaction(async (tx: any) => {
       const resetToken = await tx.passwordResetToken.findFirst({
-        where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
+        where: {
+          tokenHash,
+          usedAt: null,
+          verifiedAt: { not: null },
+          expiresAt: { gt: new Date() },
+        },
       });
 
-      if (!resetToken) throw Errors.badRequest("رمز الاستعادة غير صالح أو منتهي الصلاحية.");
+      if (!resetToken) throw Errors.badRequest("رمز إعادة التعيين غير صالح أو منتهي الصلاحية.");
 
       // Atomically mark as used to prevent race condition (double-use)
       const marked = await tx.passwordResetToken.updateMany({
