@@ -324,13 +324,49 @@ export default function Header() {
 
             {/* Mobile Menu Footer */}
             <div className="p-4 border-t border-border space-y-2 mt-auto">
-              <Link
-                href="/login"
-                onClick={() => setMenuOpen(false)}
-                className="block w-full text-center py-2.5 bg-primary text-white rounded-xl font-medium transition hover:bg-primary/90"
-              >
-                تسجيل الدخول
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    href="/account"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-foreground hover:bg-primary/5 transition text-sm"
+                  >
+                    <User size={16} />
+                    الملف الشخصي
+                  </Link>
+                  <Link
+                    href="/account/orders"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-foreground hover:bg-primary/5 transition text-sm"
+                  >
+                    <ShoppingCart size={16} />
+                    طلباتي
+                  </Link>
+                  <button
+                    onClick={() => { logout(); setMenuOpen(false); }}
+                    className="w-full text-center py-2.5 bg-red-500/10 text-red-500 rounded-xl font-medium transition hover:bg-red-500/20"
+                  >
+                    تسجيل الخروج
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="block w-full text-center py-2.5 bg-primary text-white rounded-xl font-medium transition hover:bg-primary/90"
+                  >
+                    تسجيل الدخول
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setMenuOpen(false)}
+                    className="block w-full text-center py-2.5 border border-border text-foreground rounded-xl font-medium transition hover:bg-primary/5"
+                  >
+                    إنشاء حساب
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/components/providers/auth-provider";
 import { getJson, postJson, deleteJson, putJson } from "@/lib/client/api";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface CartItem {
   id: string;
@@ -71,6 +72,7 @@ const CartWishlistContext = createContext<CartWishlistContextValue | null>(null)
 
 export function CartWishlistProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [cart, setCart] = useState<Cart | null>(null);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,7 +134,7 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
   const addToCart = useCallback(
     async (productId: string, quantity = 1, variantId?: string) => {
       if (!isAuthenticated) {
-        toast.error("يرجى تسجيل الدخول أولاً للإضافة إلى السلة");
+        router.push("/login");
         return false;
       }
 
@@ -150,7 +152,7 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [isAuthenticated, refreshCart]
+    [isAuthenticated, refreshCart, router]
   );
 
   const removeItemFromCart = useCallback(
@@ -194,7 +196,7 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
   const toggleWishlist = useCallback(
     async (productId: string) => {
       if (!isAuthenticated) {
-        toast.error("يرجى تسجيل الدخول أولاً لإضافة المنتج للمفضلة");
+        router.push("/login");
         return false;
       }
 
@@ -216,7 +218,7 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [isAuthenticated, refreshWishlist]
+    [isAuthenticated, refreshWishlist, router]
   );
 
   const value = useMemo(

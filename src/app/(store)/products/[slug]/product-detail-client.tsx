@@ -6,6 +6,7 @@ import { ShoppingCart, Heart, Star, Minus, Plus, ChevronLeft, ChevronRight, Shar
 import { useAuth } from '@/components/providers/auth-provider';
 import { postJson } from '@/lib/client/api';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface ProductImage {
   id: string;
@@ -57,6 +58,7 @@ function formatPrice(price: number | string): string {
 
 export default function ProductDetailClient({ product }: { product: ProductDetail }) {
   const { isAuthenticated } = useAuth();
+  const router = useRouter();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(
@@ -92,7 +94,7 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
-      toast.error('يرجى تسجيل الدخول أولاً');
+      router.push('/login');
       return;
     }
     setAddingToCart(true);
@@ -112,7 +114,7 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
 
   const handleAddToWishlist = async () => {
     if (!isAuthenticated) {
-      toast.error('يرجى تسجيل الدخول أولاً');
+      router.push('/login');
       return;
     }
     const res = await postJson('/api/v1/wishlist', { productId: product.id });
@@ -126,20 +128,20 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
   return (
     <div className="container mx-auto px-4 py-6">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link href="/" className="hover:text-primary transition">الرئيسية</Link>
-        <ChevronLeft size={14} />
-        <Link href="/products" className="hover:text-primary transition">المنتجات</Link>
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6 overflow-x-auto scrollbar-hide whitespace-nowrap">
+        <Link href="/" className="hover:text-primary transition shrink-0">الرئيسية</Link>
+        <ChevronLeft size={14} className="shrink-0" />
+        <Link href="/products" className="hover:text-primary transition shrink-0">المنتجات</Link>
         {product.category && (
           <>
-            <ChevronLeft size={14} />
-            <Link href={`/category/${product.category.slug}`} className="hover:text-primary transition">
+            <ChevronLeft size={14} className="shrink-0" />
+            <Link href={`/category/${product.category.slug}`} className="hover:text-primary transition shrink-0">
               {product.category.nameAr || product.category.name}
             </Link>
           </>
         )}
-        <ChevronLeft size={14} />
-        <span className="text-foreground font-medium truncate max-w-[200px]">{product.nameAr || product.name}</span>
+        <ChevronLeft size={14} className="shrink-0" />
+        <span className="text-foreground font-medium truncate max-w-[140px] sm:max-w-[200px]">{product.nameAr || product.name}</span>
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
