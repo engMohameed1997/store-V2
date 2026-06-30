@@ -64,10 +64,6 @@ export const authClient = {
     return postJson(`${AUTH_BASE}/verify-phone`, payload);
   },
 
-  verifyEmail(token: string): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/verify-email`, { token });
-  },
-
   forgotPassword(identifier: string): Promise<ApiResult> {
     return postJson(`${AUTH_BASE}/forgot-password`, { identifier });
   },

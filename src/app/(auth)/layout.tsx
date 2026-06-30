@@ -1,4 +1,6 @@
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import Header from "@/components/store/header";
+import Footer from "@/components/store/footer";
+import { WhatsAppButton } from "@/components/store/whatsapp-button";
 
 export default function AuthLayout({
   children,
@@ -7,12 +9,12 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="absolute left-4 top-4 z-10">
-        <ThemeToggle />
-      </div>
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
+      <Header />
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
         {children}
       </main>
+      <Footer />
+      <WhatsAppButton />
     </div>
   );
 }

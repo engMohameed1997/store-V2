@@ -65,9 +65,7 @@ export default function ForgotPasswordPage() {
     <div className="w-full max-w-md">
       <div className="bg-card rounded-2xl border border-border p-8 shadow-lg">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-3">🔑</div>
           <h1 className="text-2xl font-bold text-foreground">نسيت كلمة المرور؟</h1>
-          <p className="text-muted-foreground text-sm mt-1">أدخل بريدك الإلكتروني أو رقم هاتفك وسنرسل لك رابط إعادة التعيين</p>
         </div>
 
         {error && (
@@ -78,12 +76,12 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">البريد الإلكتروني أو رقم الهاتف</label>
+            <label className="text-sm font-medium text-foreground mb-1 block">أدخل رقم الهاتف</label>
             <div className="relative">
               <input
                 type="text"
                 name="identifier"
-                placeholder="user@example.com أو 07XXXXXXXXX"
+                placeholder="رقم الهاتف"
                 required
                 className="w-full pr-10 pl-4 py-3 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition"
                 dir="ltr"

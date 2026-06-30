@@ -346,30 +346,6 @@ export class AuthService {
     return { message: "إذا كان الحساب موجوداً، تم إرسال تعليمات الاستعادة." };
   }
 
-  static async verifyEmail(tokenStr: string) {
-    const tokenHash = hashToken(tokenStr);
-
-    const verification = await db.emailVerification.findFirst({
-      where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
-    });
-
-    if (!verification) throw Errors.badRequest("رابط التحقق غير صالح أو منتهي الصلاحية.");
-
-    await db.emailVerification.update({
-      where: { id: verification.id },
-      data: { usedAt: new Date() },
-    });
-
-    if (verification.userId) {
-      await db.user.update({
-        where: { id: verification.userId },
-        data: { emailVerified: true, status: "ACTIVE" },
-      });
-    }
-
-    return { verified: true };
-  }
-
   static async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = await db.user.findUnique({ where: { id: userId } });
     if (!user || !user.passwordHash) throw Errors.badRequest("تعذّر تغيير كلمة المرور.");

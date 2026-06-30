@@ -45,7 +45,7 @@ echo "   ⏳ Waiting for nginx to be ready..."
 sleep 5
 
 # ── Step 4: Request real certificate from Let's Encrypt ─────────────────────
-echo "🔑 Requesting Let's Encrypt certificate..."
+echo " Requesting Let's Encrypt certificate..."
 docker compose run --rm certbot certonly \
     --webroot \
     --webroot-path=/var/www/certbot \

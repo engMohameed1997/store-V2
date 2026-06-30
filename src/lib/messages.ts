@@ -20,7 +20,6 @@ export const MSG = {
     resetSuccess: 'تم تغيير كلمة المرور بنجاح',
     passwordMismatch: 'كلمتا المرور غير متطابقتان',
     verifyPhoneSuccess: 'تم تأكيد رقم الهاتف بنجاح',
-    verifyEmailSuccess: 'تم تأكيد البريد الإلكتروني بنجاح',
     otpResent: 'تم إعادة إرسال رمز التحقق',
     otpInvalid: 'رمز التحقق غير صحيح',
   },

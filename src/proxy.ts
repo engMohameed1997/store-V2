@@ -107,7 +107,7 @@ function handleCors(request: NextRequest, response: NextResponse): NextResponse 
 }
 
 // Auth pages that require specific conditions (handled individually below)
-// verify-email: needs session | verify-phone: needs phone param | reset-password: guest only
+// verify-phone: needs phone param | reset-password: guest only
 
 function isAuthenticated(request: NextRequest): boolean {
   return !!request.cookies.get("accessToken")?.value;
@@ -123,11 +123,6 @@ function handleAuthRoutes(request: NextRequest): NextResponse | null {
     if (!hasPhone && !hasSession) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-  }
-
-  // Conditional pages: verify-email requires session (user just registered)
-  if (pathname === "/verify-email" && !hasSession) {
-    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Conditional pages: reset-password - logged in users don't need it
