@@ -24,26 +24,26 @@ export class CouponService {
     });
 
     if (!coupon || !coupon.isActive) {
-      throw Errors.badRequest("Invalid or inactive coupon");
+      throw Errors.badRequest("الكوبون غير صالح أو غير مفعل");
     }
 
     const now = new Date();
     if (coupon.startsAt && coupon.startsAt > now) {
-      throw Errors.badRequest("Coupon is not yet active");
+      throw Errors.badRequest("الكوبون لم يبدأ بعد");
     }
     if (coupon.expiresAt && coupon.expiresAt < now) {
-      throw Errors.badRequest("Coupon has expired");
+      throw Errors.badRequest("انتهت صلاحية الكوبون");
     }
 
     if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
-      throw Errors.badRequest("Coupon usage limit reached");
+      throw Errors.badRequest("تم الوصول للحد الأقصى لاستخدام الكوبون");
     }
 
     const userUsages = await db.couponUsage.count({
       where: { couponId: coupon.id, userId },
     });
     if (userUsages >= coupon.perUserLimit) {
-      throw Errors.badRequest("You have already used this coupon");
+      throw Errors.badRequest("لقد استخدمت هذا الكوبون من قبل");
     }
 
     const orderTotal = items
@@ -54,32 +54,32 @@ export class CouponService {
 
     if (coupon.scope === "SPECIFIC_PRODUCTS") {
       if (productIds.length === 0) {
-        throw Errors.badRequest("This coupon applies to specific products only. Please provide product IDs for validation.");
+        throw Errors.badRequest("هذا الكوبون يطبق على منتجات محددة فقط. يرجى تمرير معرفات المنتجات للتحقق.");
       }
       const allowedProductIds = coupon.couponProducts.map((cp: { productId: string }) => cp.productId);
       const hasValidProduct = productIds.some((pid) => allowedProductIds.includes(pid));
       if (!hasValidProduct) {
-        throw Errors.badRequest("Coupon does not apply to any product in your cart");
+        throw Errors.badRequest("الكوبون لا يطبق على أي منتج في سلتك");
       }
     }
 
     if (coupon.scope === "SPECIFIC_CATEGORIES") {
       if (categoryIds.length === 0) {
-        throw Errors.badRequest("This coupon applies to specific categories only. Please provide category IDs for validation.");
+        throw Errors.badRequest("هذا الكوبون يطبق على فئات محددة فقط. يرجى تمرير معرفات الفئات للتحقق.");
       }
       const allowedCategoryIds = coupon.couponCategories.map((cc: { categoryId: string }) => cc.categoryId);
       const hasValidCategory = categoryIds.some((cid) => allowedCategoryIds.includes(cid));
       if (!hasValidCategory) {
-        throw Errors.badRequest("Coupon does not apply to any category in your cart");
+        throw Errors.badRequest("الكوبون لا يطبق على أي فئة في سلتك");
       }
     }
 
     if (coupon.minOrderAmount) {
       if (!orderTotal) {
-        throw Errors.badRequest(`This coupon requires a minimum order amount of ${coupon.minOrderAmount}`);
+        throw Errors.badRequest(`هذا الكوبون يتطلب حد أدنى للطلب بقيمة ${coupon.minOrderAmount}`);
       }
       if (orderTotal < Number(coupon.minOrderAmount)) {
-        throw Errors.badRequest(`Minimum order amount is ${coupon.minOrderAmount}`);
+        throw Errors.badRequest(`الحد الأدنى للطلب هو ${coupon.minOrderAmount}`);
       }
     }
 

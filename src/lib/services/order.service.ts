@@ -172,34 +172,34 @@ export class OrderService {
         });
 
         if (!coupon || !coupon.isActive) {
-          throw Errors.badRequest("Invalid or inactive coupon");
+          throw Errors.badRequest("الكوبون غير صالح أو غير مفعل");
         }
 
         const now = new Date();
         if (coupon.startsAt && coupon.startsAt > now) {
-          throw Errors.badRequest("Coupon is not yet active");
+          throw Errors.badRequest("الكوبون لم يبدأ بعد");
         }
         if (coupon.expiresAt && coupon.expiresAt < now) {
-          throw Errors.badRequest("Coupon has expired");
+          throw Errors.badRequest("انتهت صلاحية الكوبون");
         }
 
         // Check usage limit atomically
         if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
-          throw Errors.badRequest("Coupon usage limit reached");
+          throw Errors.badRequest("تم الوصول للحد الأقصى لاستخدام الكوبون");
         }
 
         const userUsages = await tx.couponUsage.count({
           where: { couponId: coupon.id, userId },
         });
         if (userUsages >= coupon.perUserLimit) {
-          throw Errors.badRequest("You have already used this coupon");
+          throw Errors.badRequest("لقد استخدمت هذا الكوبون من قبل");
         }
 
         if (coupon.scope === "SPECIFIC_PRODUCTS" && cartProductIds?.length) {
           const allowedProductIds = coupon.couponProducts.map((cp: { productId: string }) => cp.productId);
           const hasValidProduct = cartProductIds.some((pid: string) => allowedProductIds.includes(pid));
           if (!hasValidProduct) {
-            throw Errors.badRequest("Coupon does not apply to any product in your cart");
+            throw Errors.badRequest("الكوبون لا يطبق على أي منتج في سلتك");
           }
         }
 
@@ -207,12 +207,12 @@ export class OrderService {
           const allowedCategoryIds = coupon.couponCategories.map((cc: { categoryId: string }) => cc.categoryId);
           const hasValidCategory = cartCategoryIds.some((cid: string) => allowedCategoryIds.includes(cid));
           if (!hasValidCategory) {
-            throw Errors.badRequest("Coupon does not apply to any category in your cart");
+            throw Errors.badRequest("الكوبون لا يطبق على أي فئة في سلتك");
           }
         }
 
         if (coupon.minOrderAmount && subtotal < Number(coupon.minOrderAmount)) {
-          throw Errors.badRequest(`Minimum order amount is ${coupon.minOrderAmount}`);
+          throw Errors.badRequest(`الحد الأدنى للطلب هو ${coupon.minOrderAmount}`);
         }
 
         // Calculate eligible subtotal based on coupon scope
@@ -257,7 +257,7 @@ export class OrderService {
       let shippingCost = 0;
       // Always check shipping zone availability, even with free shipping
       if (!shippingZone) {
-        throw Errors.badRequest("Shipping is not available to your area");
+        throw Errors.badRequest("عنوان الشحن غير متوفر في منطقتك");
       }
       if (!isFreeShipping) {
         shippingCost = shippingZone.freeAbove && subtotal >= Number(shippingZone.freeAbove)
@@ -335,7 +335,7 @@ export class OrderService {
 
       if (couponId) {
         const couponRecord = await tx.coupon.findUnique({ where: { id: couponId } });
-        if (!couponRecord) throw Errors.badRequest("Coupon not found");
+        if (!couponRecord) throw Errors.badRequest("الكوبون غير موجود");
 
         const couponWhere: Record<string, unknown> = { id: couponId };
         if (couponRecord.usageLimit !== null) {
@@ -347,7 +347,7 @@ export class OrderService {
           data: { usageCount: { increment: 1 } },
         });
         if (couponUpdate.count === 0) {
-          throw Errors.badRequest("Coupon usage limit reached");
+          throw Errors.badRequest("تم الوصول للحد الأقصى لاستخدام الكوبون");
         }
         await tx.couponUsage.create({
           data: { couponId, userId, orderId: newOrder.id },
