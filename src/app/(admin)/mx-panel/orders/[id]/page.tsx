@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
 import type { AdminOrder } from '@/lib/client/admin';
+import { formatPrice } from '@/lib/utils/format';
 
 const ORDER_STATUSES = [
   { value: 'PENDING', label: 'قيد الانتظار' },
@@ -46,12 +47,6 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'ملغي',
   RETURNED: 'مرتجع',
 };
-
-function formatPrice(price: number | string | undefined | null): string {
-  if (price === undefined || price === null) return '0';
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return isNaN(num) ? '0' : num.toLocaleString('ar-IQ');
-}
 
 interface OrderDetail extends AdminOrder {
   address?: {

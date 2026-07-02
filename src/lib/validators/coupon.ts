@@ -2,9 +2,12 @@ import { z } from "zod";
 
 export const validateCouponSchema = z.object({
   code: z.string().min(1).max(50).transform((v) => v.trim().toUpperCase()),
-  orderTotal: z.number().positive().optional(),
-  productIds: z.array(z.string()).optional(),
-  categoryIds: z.array(z.string()).optional(),
+  items: z.array(z.object({
+    productId: z.string(),
+    categoryId: z.string().nullable().optional(),
+    price: z.number(),
+    quantity: z.number().int().positive(),
+  })).optional(),
 });
 
 const couponBaseSchema = z.object({

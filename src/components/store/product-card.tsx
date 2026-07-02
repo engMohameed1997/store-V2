@@ -5,14 +5,10 @@ import { ShoppingCart, Heart, Star, Eye, Loader2 } from 'lucide-react';
 import type { ProductListItem } from '@/lib/types/store';
 import { useState } from 'react';
 import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
+import { formatPrice } from '@/lib/utils/format';
 
 interface Props {
   product: ProductListItem;
-}
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
 }
 
 function getDiscount(price: number | string, compareAtPrice: number | string | null): number {

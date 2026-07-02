@@ -7,6 +7,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { postJson } from '@/lib/client/api';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { formatPrice } from '@/lib/utils/format';
 
 interface ProductImage {
   id: string;
@@ -49,11 +50,6 @@ interface ProductDetail {
   variants: ProductVariant[];
   category: { id: string; name: string; slug: string; nameAr?: string | null } | null;
   brand: { id: string; name: string; slug: string } | null;
-}
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
 }
 
 export default function ProductDetailClient({ product }: { product: ProductDetail }) {

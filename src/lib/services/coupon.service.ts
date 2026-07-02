@@ -2,13 +2,18 @@ import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
 import type { DiscountType, CouponScope } from "@/generated/prisma/client";
 
+export interface CouponItem {
+  productId: string;
+  categoryId?: string | null;
+  price: number;
+  quantity: number;
+}
+
 export class CouponService {
   static async validate(
     code: string,
     userId: string,
-    orderTotal?: number,
-    productIds?: string[],
-    categoryIds?: string[]
+    items?: CouponItem[]
   ) {
     const coupon = await db.coupon.findUnique({
       where: { code: code.toUpperCase(), deletedAt: null },
@@ -41,8 +46,14 @@ export class CouponService {
       throw Errors.badRequest("You have already used this coupon");
     }
 
+    const orderTotal = items
+      ? items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+      : 0;
+    const productIds = items?.map((i) => i.productId) ?? [];
+    const categoryIds = items?.map((i) => i.categoryId).filter(Boolean) as string[] ?? [];
+
     if (coupon.scope === "SPECIFIC_PRODUCTS") {
-      if (!productIds || productIds.length === 0) {
+      if (productIds.length === 0) {
         throw Errors.badRequest("This coupon applies to specific products only. Please provide product IDs for validation.");
       }
       const allowedProductIds = coupon.couponProducts.map((cp: { productId: string }) => cp.productId);
@@ -53,7 +64,7 @@ export class CouponService {
     }
 
     if (coupon.scope === "SPECIFIC_CATEGORIES") {
-      if (!categoryIds || categoryIds.length === 0) {
+      if (categoryIds.length === 0) {
         throw Errors.badRequest("This coupon applies to specific categories only. Please provide category IDs for validation.");
       }
       const allowedCategoryIds = coupon.couponCategories.map((cc: { categoryId: string }) => cc.categoryId);
@@ -72,18 +83,22 @@ export class CouponService {
       }
     }
 
+    // Calculate eligible subtotal based on coupon scope
+    let eligibleAmount = orderTotal;
+    if (coupon.scope === "SPECIFIC_PRODUCTS" && items?.length) {
+      const allowedProductIds = coupon.couponProducts.map((cp: { productId: string }) => cp.productId);
+      eligibleAmount = items
+        .filter((i) => allowedProductIds.includes(i.productId))
+        .reduce((sum, i) => sum + i.price * i.quantity, 0);
+    } else if (coupon.scope === "SPECIFIC_CATEGORIES" && items?.length) {
+      const allowedCategoryIds = coupon.couponCategories.map((cc: { categoryId: string }) => cc.categoryId);
+      eligibleAmount = items
+        .filter((i) => i.categoryId && allowedCategoryIds.includes(i.categoryId))
+        .reduce((sum, i) => sum + i.price * i.quantity, 0);
+    }
+
     let discountAmount = 0;
     if (orderTotal) {
-      // Calculate eligible subtotal based on scope
-      let eligibleAmount = orderTotal;
-      if (coupon.scope === "SPECIFIC_PRODUCTS" && productIds?.length) {
-        // In validate endpoint we don't have item-level pricing, so discount applies to full orderTotal
-        // The actual eligible amount will be recalculated accurately at order creation time
-        eligibleAmount = orderTotal;
-      } else if (coupon.scope === "SPECIFIC_CATEGORIES" && categoryIds?.length) {
-        eligibleAmount = orderTotal;
-      }
-
       switch (coupon.discountType) {
         case "PERCENTAGE":
           discountAmount = (eligibleAmount * Number(coupon.discountValue)) / 100;

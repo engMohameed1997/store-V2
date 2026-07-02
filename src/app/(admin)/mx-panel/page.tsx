@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson, postJson } from '@/lib/client/api';
+import { formatPrice } from '@/lib/utils/format';
 
 const ADMIN_BASE = '/api/v1/mx-panel';
 
@@ -34,11 +35,6 @@ interface LowStockProduct {
   nameAr: string | null;
   stock: number;
   price: number | string;
-}
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
 }
 
 function formatDate(d: string) {

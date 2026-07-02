@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Package, ChevronLeft, MapPin, CreditCard, Truck } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson } from '@/lib/client/api';
+import { formatPrice } from '@/lib/utils/format';
 
 interface OrderItem {
   id: string;
@@ -68,12 +69,6 @@ const PAYMENT_LABELS: Record<string, string> = {
   FAST_PAY: 'فاست باي',
   CREDIT_CARD: 'بطاقة ائتمان',
 };
-
-function formatPrice(price: number | string | undefined | null): string {
-  if (price === undefined || price === null) return '0';
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return isNaN(num) ? '0' : num.toLocaleString('ar-IQ');
-}
 
 export default function OrderDetailPage() {
   const params = useParams();

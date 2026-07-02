@@ -4,11 +4,7 @@ import Link from 'next/link';
 import { Heart, Trash2, ShoppingCart } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
-}
+import { formatPrice } from '@/lib/utils/format';
 
 export default function WishlistPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Package, Eye, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson } from '@/lib/client/api';
+import { formatPrice } from '@/lib/utils/format';
 
 interface OrderItem {
   id: string;
@@ -33,11 +34,6 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   CANCELLED: { label: 'ملغي', color: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' },
   REFUNDED: { label: 'مسترجع', color: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400' },
 };
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
-}
 
 export default function OrdersPage() {
   const { isAuthenticated } = useAuth();

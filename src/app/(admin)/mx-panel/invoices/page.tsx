@@ -13,11 +13,7 @@ import {
 } from 'lucide-react';
 import { useAdminClient } from '@/hooks/use-admin-client';
 import type { AdminOrder } from '@/lib/client/admin';
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
-}
+import { formatPrice } from '@/lib/utils/format';
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('ar-IQ', {

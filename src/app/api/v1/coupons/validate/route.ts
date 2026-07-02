@@ -10,9 +10,7 @@ export const POST = protectedRoute(async (request: NextRequest, context) => {
   const result = await CouponService.validate(
     input.code,
     context.user!.userId,
-    input.orderTotal,
-    input.productIds,
-    input.categoryIds
+    input.items
   );
   return apiSuccess(result);
 });

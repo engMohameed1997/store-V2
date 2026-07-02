@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson } from '@/lib/client/api';
+import { formatPrice } from '@/lib/utils/format';
 
 const ADMIN_BASE = '/api/v1/mx-panel';
 
@@ -95,11 +96,6 @@ interface ReportsData {
   orderCompletionRate?: OrderCompletionRate;
   vipCustomers?: VipCustomer[];
   wishlistVsCart?: WishlistVsCart;
-}
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
 }
 
 export default function ReportsPage() {

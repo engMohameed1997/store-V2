@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, CreditCard, FileText, ChevronLeft, Plus, Loader2, CheckCircle2 } from 'lucide-react';
+import { MapPin, CreditCard, FileText, ChevronLeft, Plus, Loader2, CheckCircle2, Ticket, X } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson, postJson } from '@/lib/client/api';
+import { useCouponStore } from '@/stores/coupon-store';
+import { formatPrice } from '@/lib/utils/format';
 import { toast } from 'sonner';
 
 interface Address {
@@ -43,6 +44,14 @@ interface Cart {
   items: CartItem[];
 }
 
+interface CheckoutSummary {
+  subtotal: number;
+  discount: number;
+  shipping: number | null;
+  total: number;
+  isFreeShipping: boolean;
+}
+
 const PAYMENT_METHODS = [
   { value: 'CASH_ON_DELIVERY', label: 'الدفع عند الاستلام', icon: '💵' },
   { value: 'ZAIN_CASH', label: 'زين كاش', icon: '📱' },
@@ -50,13 +59,7 @@ const PAYMENT_METHODS = [
   { value: 'FAST_PAY', label: 'فاست باي', icon: '⚡' },
 ];
 
-function formatPrice(price: number | string): string {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  return num.toLocaleString('ar-IQ');
-}
-
 export default function CheckoutPage() {
-  const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -67,8 +70,11 @@ export default function CheckoutPage() {
 
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState('CASH_ON_DELIVERY');
-  const [couponCode, setCouponCode] = useState('');
   const [notes, setNotes] = useState('');
+
+  const { couponCode, clearCoupon } = useCouponStore();
+  const [summary, setSummary] = useState<CheckoutSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -96,6 +102,25 @@ export default function CheckoutPage() {
     }
   }, [isAuthenticated, isLoading, fetchData]);
 
+  // Fetch checkout summary from server
+  const fetchSummary = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setSummaryLoading(true);
+    const res = await postJson<CheckoutSummary>('/api/v1/checkout/summary', {
+      couponCode: couponCode || undefined,
+    });
+    setSummaryLoading(false);
+    if (res.success && res.data) {
+      setSummary(res.data as CheckoutSummary);
+    }
+  }, [isAuthenticated, couponCode]);
+
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      fetchSummary();
+    }
+  }, [isAuthenticated, loading, fetchSummary]);
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -109,16 +134,17 @@ export default function CheckoutPage() {
     }
 
     setSubmitting(true);
-    const res = await postJson<any>('/api/v1/orders', {
+    const res = await postJson<{ id: string }>('/api/v1/orders', {
       shippingAddressId: selectedAddress,
       paymentMethod,
-      couponCode: couponCode.trim() || undefined,
+      couponCode: couponCode || undefined,
       notes: notes.trim() || undefined,
     });
 
     setSubmitting(false);
 
     if (res.success) {
+      clearCoupon();
       setOrderSuccess(true);
       setOrderId(res.data?.id || null);
       toast.success('تم إنشاء الطلب بنجاح!');
@@ -190,13 +216,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
-  const subtotal = items.reduce((sum, item) => {
-    const p = item.variant
-      ? (typeof item.variant.price === 'string' ? parseFloat(item.variant.price) : item.variant.price)
-      : (typeof item.product.price === 'string' ? parseFloat(item.product.price) : item.product.price);
-    return sum + p * item.quantity;
-  }, 0);
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -300,24 +319,35 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Notes + Coupon */}
+            {/* Notes */}
             <div className="bg-card rounded-xl border border-border p-5 space-y-4">
               <h2 className="font-bold text-foreground flex items-center gap-2">
                 <FileText size={18} className="text-primary" />
                 ملاحظات إضافية
               </h2>
 
-              {/* Coupon */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">كود الخصم (اختياري)</label>
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={e => setCouponCode(e.target.value)}
-                  placeholder="أدخل كود الخصم"
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition text-sm"
-                />
-              </div>
+              {/* Coupon badge (from Store) */}
+              {couponCode && (
+                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Ticket size={16} className="text-emerald-600" />
+                    <span className="text-emerald-700 dark:text-emerald-400">
+                      كود الخصم: {couponCode}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearCoupon();
+                      toast.success('تم إزالة كود الخصم');
+                    }}
+                    className="text-red-500 hover:text-red-600 p-1 rounded transition"
+                    title="إزالة"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
 
               {/* Notes */}
               <div>
@@ -366,20 +396,42 @@ export default function CheckoutPage() {
 
               {/* Totals */}
               <div className="space-y-2 text-sm border-t border-border pt-3 mb-4">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>المجموع الفرعي ({items.length} منتج)</span>
-                  <span>{formatPrice(subtotal)} د.ع</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>التوصيل</span>
-                  <span>يُحسب لاحقاً</span>
-                </div>
+                {summaryLoading ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                  </div>
+                ) : summary ? (
+                  <>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>المجموع الفرعي ({items.length} منتج)</span>
+                      <span>{formatPrice(summary.subtotal)} د.ع</span>
+                    </div>
+                    {summary.discount > 0 && (
+                      <div className="flex justify-between text-emerald-600">
+                        <span>الخصم</span>
+                        <span>-{formatPrice(summary.discount)} د.ع</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>التوصيل</span>
+                      <span>
+                        {summary.shipping === null
+                          ? 'يُحسب لاحقاً'
+                          : summary.isFreeShipping
+                            ? 'شحن مجاني'
+                            : `${formatPrice(summary.shipping)} د.ع`}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
               </div>
 
               <div className="border-t border-border pt-3 mb-5">
                 <div className="flex justify-between font-bold text-foreground">
                   <span>الإجمالي</span>
-                  <span className="text-primary text-lg">{formatPrice(subtotal)} د.ع</span>
+                  <span className="text-primary text-lg">
+                    {summary ? formatPrice(summary.total) : '—'} د.ع
+                  </span>
                 </div>
               </div>
 
