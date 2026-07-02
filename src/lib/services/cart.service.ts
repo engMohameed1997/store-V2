@@ -69,6 +69,7 @@ export class CartService {
   static async addItem(userId: string, input: AddToCartInput) {
     const product = await db.product.findUnique({
       where: { id: input.productId, isActive: true, deletedAt: null },
+      select: { id: true, name: true, stock: true, slug: true, nameAr: true },
     });
 
     if (!product) throw Errors.notFound("Product");

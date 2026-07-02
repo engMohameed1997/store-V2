@@ -20,6 +20,8 @@ import type {
 } from "@/lib/validators/auth";
 import { verifyFirebaseToken, isFirebaseAdminConfigured, deleteFirebaseUser } from "@/lib/firebase/admin";
 import { normalizeIraqiPhone } from "@/lib/firebase/client";
+import { USER_AUTH_SELECT, USER_ID_ONLY } from "@/lib/selects/user.select";
+import { toAuthUserDTO } from "@/lib/dto/user.dto";
 
 const SALT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -56,12 +58,13 @@ export class AuthService {
       const { e164, local } = normalizeIraqiPhone(input.phone);
       const existing = await db.user.findFirst({
         where: { phone: { in: [e164, local] } },
+        select: USER_ID_ONLY,
       });
       if (existing) {
         throw Errors.conflict("رقم الهاتف مستخدم بالفعل.");
       }
 
-      const existingUid = await db.user.findUnique({ where: { firebaseUid } });
+      const existingUid = await db.user.findUnique({ where: { firebaseUid }, select: USER_ID_ONLY });
       if (existingUid) {
         throw Errors.conflict("رقم الهاتف مستخدم بالفعل.");
       }
@@ -89,14 +92,7 @@ export class AuthService {
       await storeRefreshToken(user.id, refreshToken, rtPayload.family!, meta);
 
       return {
-        user: {
-          id: user.id,
-          phone: user.phone,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          avatar: user.avatar,
-        },
+        user: toAuthUserDTO(user),
         accessToken,
         refreshToken,
         message: "تم إنشاء الحساب بنجاح.",
@@ -131,6 +127,7 @@ export class AuthService {
       where: isEmail
         ? { email: lookupIdentifier }
         : { phone: lookupIdentifier },
+      select: USER_AUTH_SELECT,
     });
 
     if (!user) {
@@ -196,15 +193,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        avatar: user.avatar,
-      },
+      user: toAuthUserDTO(user),
     };
   }
 
@@ -249,15 +238,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: newRefreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        avatar: user.avatar,
-      },
+      user: toAuthUserDTO(user),
     };
   }
 
@@ -293,7 +274,7 @@ export class AuthService {
     }
 
     const { e164 } = normalizeIraqiPhone(input.phone);
-    const user = await db.user.findUnique({ where: { phone: e164 } });
+    const user = await db.user.findUnique({ where: { phone: e164 }, select: USER_ID_ONLY });
     if (!user) {
       throw Errors.notFound("المستخدم");
     }
@@ -381,7 +362,10 @@ export class AuthService {
   }
 
   static async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    const user = await db.user.findUnique({ where: { id: userId } });
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { id: true, passwordHash: true },
+    });
     if (!user || !user.passwordHash) throw Errors.badRequest("تعذّر تغيير كلمة المرور.");
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);

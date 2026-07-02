@@ -28,6 +28,7 @@ export class ReviewService {
   static async create(userId: string, input: CreateReviewInput) {
     const product = await db.product.findUnique({
       where: { id: input.productId, isActive: true, deletedAt: null },
+      select: { id: true, name: true },
     });
     if (!product) throw Errors.notFound("Product");
 

@@ -13,7 +13,10 @@ export class BranchService {
   }
 
   static async get(id: string) {
-    const branch = await db.branch.findUnique({ where: { id } });
+    const branch = await db.branch.findUnique({
+      where: { id },
+      select: { id: true, name: true, nameAr: true, address: true, addressAr: true, phone: true, isActive: true },
+    });
     if (!branch) throw Errors.notFound("Branch");
     return branch;
   }
@@ -40,14 +43,14 @@ export class BranchService {
       isActive: boolean;
     }>
   ) {
-    const existing = await db.branch.findUnique({ where: { id } });
+    const existing = await db.branch.findUnique({ where: { id }, select: { id: true } });
     if (!existing) throw Errors.notFound("Branch");
 
     return db.branch.update({ where: { id }, data });
   }
 
   static async delete(id: string) {
-    const branch = await db.branch.findUnique({ where: { id } });
+    const branch = await db.branch.findUnique({ where: { id }, select: { id: true } });
     if (!branch) throw Errors.notFound("Branch");
 
     // Delete associated inventories and the branch
@@ -73,7 +76,7 @@ export class BranchService {
     variantId: string | null,
     stock: number
   ) {
-    const branch = await db.branch.findUnique({ where: { id: branchId } });
+    const branch = await db.branch.findUnique({ where: { id: branchId }, select: { id: true } });
     if (!branch) throw Errors.notFound("Branch");
 
     // Find existing inventory record

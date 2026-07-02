@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type { AuditAction } from "@/generated/prisma/client";
+import { toAuditLogDTO, toAuditLogDTOList } from "@/lib/dto/audit.dto";
 
 export class AuditService {
   static async log(data: {
@@ -12,13 +13,13 @@ export class AuditService {
     ipAddress?: string;
     userAgent?: string;
   }) {
-    return db.auditLog.create({
+    return toAuditLogDTO(await db.auditLog.create({
       data: {
         ...data,
         oldData: data.oldData ? JSON.parse(JSON.stringify(data.oldData)) : undefined,
         newData: data.newData ? JSON.parse(JSON.stringify(data.newData)) : undefined,
       },
-    });
+    }));
   }
 
   static async list(filters: {
@@ -48,6 +49,6 @@ export class AuditService {
       db.auditLog.count({ where }),
     ]);
 
-    return { logs, total, page, limit };
+    return { logs: toAuditLogDTOList(logs), total, page, limit };
   }
 }

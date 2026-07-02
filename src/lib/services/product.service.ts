@@ -21,6 +21,38 @@ const PRODUCT_INCLUDE = {
   branchInventories: { select: { branchId: true, stock: true } },
 };
 
+const PRODUCT_PUBLIC_SELECT = {
+  id: true,
+  sku: true,
+  slug: true,
+  name: true,
+  nameAr: true,
+  description: true,
+  descriptionAr: true,
+  price: true,
+  compareAtPrice: true,
+  stock: true,
+  weight: true,
+  isActive: true,
+  isFeatured: true,
+  isDigital: true,
+  avgRating: true,
+  reviewCount: true,
+  soldCount: true,
+  warrantyDuration: true,
+  warrantyUnit: true,
+  warrantyCoverage: true,
+  createdAt: true,
+  images: { orderBy: { position: "asc" as const } },
+  specs: { orderBy: { position: "asc" as const } },
+  variants: {
+    include: { attributes: { include: { option: true } } },
+    where: { isActive: true },
+  },
+  category: { select: { id: true, name: true, slug: true, nameAr: true } },
+  brand: { select: { id: true, name: true, slug: true, nameAr: true } },
+};
+
 const PRODUCT_LIST_SELECT = {
   id: true,
   slug: true,
@@ -212,10 +244,20 @@ export class ProductService {
     return product;
   }
 
+  static async getByIdPublic(id: string) {
+    const product = await db.product.findUnique({
+      where: { id, deletedAt: null },
+      select: PRODUCT_PUBLIC_SELECT,
+    });
+
+    if (!product) throw Errors.notFound("Product");
+    return product;
+  }
+
   static async getBySlug(slug: string, clientIp?: string) {
     const product = await db.product.findUnique({
       where: { slug, deletedAt: null },
-      include: PRODUCT_INCLUDE,
+      select: PRODUCT_PUBLIC_SELECT,
     });
 
     if (!product) throw Errors.notFound("Product");
@@ -343,7 +385,10 @@ export class ProductService {
   }
 
   static async update(id: string, input: UpdateProductInput) {
-    const existing = await db.product.findUnique({ where: { id, deletedAt: null } });
+    const existing = await db.product.findUnique({
+      where: { id, deletedAt: null },
+      select: { id: true, name: true, slug: true, sku: true },
+    });
     if (!existing) throw Errors.notFound("Product");
 
     // ── Sanitize all free-text string fields against XSS ──────────────────
@@ -457,7 +502,10 @@ export class ProductService {
   }
 
   static async softDelete(id: string) {
-    const existing = await db.product.findUnique({ where: { id, deletedAt: null } });
+    const existing = await db.product.findUnique({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
     if (!existing) throw Errors.notFound("Product");
 
     await db.product.update({

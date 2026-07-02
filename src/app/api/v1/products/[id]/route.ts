@@ -5,6 +5,6 @@ import { ProductService } from "@/lib/services/product.service";
 
 export const GET = publicRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
-  const product = await ProductService.getById(id);
+  const product = await ProductService.getByIdPublic(id);
   return apiSuccess(product);
 });

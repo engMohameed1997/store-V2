@@ -6,15 +6,29 @@ import crypto from "crypto";
 import { WarrantyService } from "./warranty.service";
 import { TelegramService } from "./telegram.service";
 import { logger } from "@/lib/logger";
+import { ORDER_ADDRESS_USER_VIEW, ORDER_ADDRESS_ADMIN_VIEW } from "@/lib/selects/order.select";
+import { toOrderDTO } from "@/lib/dto/order.dto";
 
-const ORDER_INCLUDE = {
+const ORDER_INCLUDE_USER = {
+  items: {
+    include: {
+      product: { select: { id: true, name: true, slug: true, sku: true, images: { where: { isPrimary: true }, take: 1 } } },
+    },
+  },
+  user: { select: { id: true, firstName: true, lastName: true } },
+  shippingAddress: ORDER_ADDRESS_USER_VIEW,
+  tracking: { orderBy: { createdAt: "desc" as const } },
+  coupon: { select: { code: true, discountType: true, discountValue: true } },
+};
+
+const ORDER_INCLUDE_ADMIN = {
   items: {
     include: {
       product: { select: { id: true, name: true, slug: true, sku: true, images: { where: { isPrimary: true }, take: 1 } } },
     },
   },
   user: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
-  shippingAddress: true,
+  shippingAddress: ORDER_ADDRESS_ADMIN_VIEW,
   tracking: { orderBy: { createdAt: "desc" as const } },
   coupon: { select: { code: true, discountType: true, discountValue: true } },
 };
@@ -330,7 +344,7 @@ export class OrderService {
             },
           },
         },
-        include: ORDER_INCLUDE,
+        include: ORDER_INCLUDE_USER,
       });
 
       if (couponId) {
@@ -375,7 +389,7 @@ export class OrderService {
       }).catch(() => {});
     } catch {}
 
-    return order;
+    return toOrderDTO(order, false);
   }
 
   static async getMyOrders(userId: string, page = 1, limit = 10) {
@@ -385,7 +399,7 @@ export class OrderService {
     const [orders, total] = await Promise.all([
       db.order.findMany({
         where: { userId },
-        include: ORDER_INCLUDE,
+        include: ORDER_INCLUDE_USER,
         orderBy: { createdAt: "desc" },
         skip,
         take: limitCapped,
@@ -393,7 +407,7 @@ export class OrderService {
       db.order.count({ where: { userId } }),
     ]);
 
-    return { orders, total, page, limit: limitCapped };
+    return { orders: orders.map((o) => toOrderDTO(o, false)), total, page, limit: limitCapped };
   }
 
   static async getById(id: string, userId?: string) {
@@ -402,7 +416,7 @@ export class OrderService {
 
     const order = await db.order.findFirst({
       where,
-      include: ORDER_INCLUDE,
+      include: userId ? ORDER_INCLUDE_USER : ORDER_INCLUDE_ADMIN,
     });
 
     if (!order) throw Errors.notFound("Order");
@@ -418,7 +432,7 @@ export class OrderService {
       }
     }
 
-    return order;
+    return toOrderDTO(order, !userId);
   }
 
   static async cancel(orderId: string, userId: string, input: CancelOrderInput) {
@@ -736,7 +750,7 @@ export class OrderService {
       db.order.findMany({
         where,
         include: {
-          ...ORDER_INCLUDE,
+          ...ORDER_INCLUDE_ADMIN,
           user: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -746,6 +760,6 @@ export class OrderService {
       db.order.count({ where }),
     ]);
 
-    return { orders, total, page, limit };
+    return { orders: orders.map((o) => toOrderDTO(o, true)), total, page, limit };
   }
 }

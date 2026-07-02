@@ -2,13 +2,14 @@ import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
 import { TicketStatus } from "@/lib/types/ticket";
 import { TelegramService } from "./telegram.service";
+import { toTicketDTO, toTicketDTOList, toTicketMessageDTOExport } from "@/lib/dto/ticket.dto";
 
 export class TicketService {
   static async list(status?: TicketStatus) {
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
 
-    return db.supportTicket.findMany({
+    const tickets = await db.supportTicket.findMany({
       where,
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
@@ -16,6 +17,7 @@ export class TicketService {
       },
       orderBy: { createdAt: "desc" },
     });
+    return toTicketDTOList(tickets);
   }
 
   static async get(id: string) {
@@ -33,7 +35,7 @@ export class TicketService {
     });
 
     if (!ticket) throw Errors.notFound("Support Ticket");
-    return ticket;
+    return toTicketDTO(ticket);
   }
 
   static async reply(ticketId: string, userId: string, body: string, isStaff = true) {
@@ -72,7 +74,7 @@ export class TicketService {
       }).catch(() => {});
     }
 
-    return message;
+    return toTicketMessageDTOExport(message);
   }
 
   static async updateStatus(id: string, status: TicketStatus) {
@@ -84,9 +86,10 @@ export class TicketService {
       updateData.closedAt = new Date();
     }
 
-    return db.supportTicket.update({
+    const updated = await db.supportTicket.update({
       where: { id },
       data: updateData,
     });
+    return toTicketDTO(updated);
   }
 }

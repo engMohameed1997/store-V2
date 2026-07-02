@@ -29,6 +29,7 @@ export class WishlistService {
   static async toggle(userId: string, productId: string) {
     const product = await db.product.findUnique({
       where: { id: productId, isActive: true, deletedAt: null },
+      select: { id: true, name: true },
     });
     if (!product) throw Errors.notFound("Product");
 

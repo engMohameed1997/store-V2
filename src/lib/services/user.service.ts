@@ -3,38 +3,27 @@ import { Errors } from "@/lib/api/errors";
 import { revokeAllUserTokens } from "@/lib/api/jwt";
 import type { UpdateProfileInput, AdminUpdateUserInput } from "@/lib/validators/user";
 import { MAX_PAGINATION_LIMIT } from "@/lib/constants/pagination";
-
-const PROFILE_SELECT = {
-  id: true,
-  email: true,
-  phone: true,
-  firstName: true,
-  lastName: true,
-  avatar: true,
-  role: true,
-  status: true,
-  emailVerified: true,
-  phoneVerified: true,
-  createdAt: true,
-};
+import { USER_SAFE_SELECT, USER_ROLE_CHECK } from "@/lib/selects/user.select";
+import { toUserDTO } from "@/lib/dto/user.dto";
 
 export class UserService {
   static async getProfile(userId: string) {
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: PROFILE_SELECT,
+      select: USER_SAFE_SELECT,
     });
 
     if (!user) throw Errors.notFound("User");
-    return user;
+    return toUserDTO(user);
   }
 
   static async updateProfile(userId: string, input: UpdateProfileInput) {
-    return db.user.update({
+    const user = await db.user.update({
       where: { id: userId },
       data: input,
-      select: PROFILE_SELECT,
+      select: USER_SAFE_SELECT,
     });
+    return toUserDTO(user);
   }
 
   static async adminList(filters: {
@@ -67,7 +56,7 @@ export class UserService {
     const [users, total] = await Promise.all([
       db.user.findMany({
         where,
-        select: { ...PROFILE_SELECT, lastLoginAt: true },
+        select: USER_SAFE_SELECT,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -75,11 +64,14 @@ export class UserService {
       db.user.count({ where }),
     ]);
 
-    return { users, total, page, limit };
+    return { users: users.map((u) => toUserDTO(u)), total, page, limit };
   }
 
   static async adminUpdate(userId: string, input: AdminUpdateUserInput, actorId?: string) {
-    const user = await db.user.findUnique({ where: { id: userId } });
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: USER_ROLE_CHECK,
+    });
     if (!user) throw Errors.notFound("User");
 
     // Prevent SUPER_ADMIN from modifying themselves
@@ -99,7 +91,7 @@ export class UserService {
 
     // Prevent non-SUPER_ADMIN from upgrading others to SUPER_ADMIN
     if (input.role === "SUPER_ADMIN") {
-      const actor = await db.user.findUnique({ where: { id: actorId! } });
+      const actor = await db.user.findUnique({ where: { id: actorId! }, select: { id: true, role: true } });
       if (!actor || actor.role !== "SUPER_ADMIN") {
         throw Errors.forbidden("Only SUPER_ADMIN can assign SUPER_ADMIN role");
       }
@@ -113,7 +105,7 @@ export class UserService {
     const updated = await db.user.update({
       where: { id: userId },
       data: input,
-      select: PROFILE_SELECT,
+      select: USER_SAFE_SELECT,
     });
 
     // Revoke all sessions when user is banned or suspended
@@ -121,11 +113,14 @@ export class UserService {
       await revokeAllUserTokens(userId);
     }
 
-    return updated;
+    return toUserDTO(updated);
   }
 
   static async adminDelete(userId: string, actorId?: string) {
-    const user = await db.user.findUnique({ where: { id: userId } });
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: USER_ROLE_CHECK,
+    });
     if (!user) throw Errors.notFound("User");
 
     // Prevent SUPER_ADMIN from deleting themselves
