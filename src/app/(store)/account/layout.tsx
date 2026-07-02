@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Package, Heart, MapPin, Settings, LogOut } from 'lucide-react';
+import { User, Package, Heart, MapPin, LogOut } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 
 const navItems = [
@@ -10,7 +10,6 @@ const navItems = [
   { href: '/account/orders', label: 'طلباتي', icon: Package },
   { href: '/wishlist', label: 'المفضلة', icon: Heart },
   { href: '/account/addresses', label: 'العناوين', icon: MapPin },
-  { href: '/account/settings', label: 'الإعدادات', icon: Settings },
 ];
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
