@@ -114,7 +114,7 @@ export default function Header() {
             )}
 
             {/* User Menu */}
-            <div className="relative" ref={userMenuRef}>
+            <div className="relative hidden md:block" ref={userMenuRef}>
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="header-icon-btn"
@@ -173,7 +173,7 @@ export default function Header() {
             </div>
 
             {/* Wishlist */}
-            <Link href="/wishlist" className="header-icon-btn relative" title="المفضلة">
+            <Link href="/wishlist" className="header-icon-btn relative hidden md:flex" title="المفضلة">
               <Heart size={20} />
               {wishlistCount > 0 && (
                 <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-scale-up">
@@ -183,7 +183,7 @@ export default function Header() {
             </Link>
 
             {/* Cart */}
-            <Link href="/cart" className="header-icon-btn relative" title="سلة التسوق">
+            <Link href="/cart" className="header-icon-btn relative hidden md:flex" title="سلة التسوق">
               <ShoppingCart size={20} />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -left-1 w-5 h-5 bg-[var(--accent)] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-scale-up">
@@ -192,28 +192,8 @@ export default function Header() {
               )}
             </Link>
 
-            {/* Mobile Menu Toggle */}
-            <button onClick={() => setMenuOpen(!menuOpen)} className="header-icon-btn md:hidden" aria-label="القائمة">
-              {menuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
           </div>
         </div>
-
-        {/* Mobile Search */}
-        <form onSubmit={handleSearch} className="md:hidden px-4 pb-3">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="ابحث عن منتجات..."
-              className="w-full h-10 pr-4 pl-12 rounded-xl bg-white/10 text-white placeholder:text-white/50 border border-white/20 outline-none focus:border-[var(--accent)] transition"
-            />
-            <button type="submit" aria-label="بحث" className="absolute left-1.5 top-1/2 -translate-y-1/2 h-7 w-9 flex items-center justify-center bg-[var(--accent)] rounded-lg">
-              <Search size={16} />
-            </button>
-          </div>
-        </form>
       </div>
 
       {/* Navigation Bar - Desktop */}

@@ -148,18 +148,20 @@
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ======= HEADER ======= */
-.header-icon-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  transition: all 0.2s;
-  color: rgba(255, 255, 255, 0.9);
-}
-.header-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+@layer components {
+  .header-icon-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  .header-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
 }
 
 /* ======= PRODUCT CARD ======= */
