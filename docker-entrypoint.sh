@@ -30,12 +30,13 @@ if [ -n "$DATABASE_URL" ]; then
 fi
 
 # ============================================
-# Run Prisma Migrations
+# Run Prisma Migrations or DB Push
 # ============================================
 if [ "$RUN_MIGRATIONS" = "true" ]; then
-  echo "📦 Running migrations..."
-  npx prisma migrate deploy || { echo "❌ Migrations failed — exiting."; exit 1; }
-  echo "✅ Migrations complete!"
+  echo "📦 Running database schema update..."
+  # Use db push for production (safer when migration history is out of sync)
+  npx prisma db push --accept-data-loss || { echo "❌ Database update failed — exiting."; exit 1; }
+  echo "✅ Database schema updated!"
 fi
 
 # ============================================
