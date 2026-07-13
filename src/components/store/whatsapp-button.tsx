@@ -1,22 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { getJson } from '@/lib/client/api';
 
-export function WhatsAppButton() {
-  const [phone, setPhone] = useState('');
-  const [greeting, setGreeting] = useState('');
-
-  useEffect(() => {
-    // Fetch store settings for whatsapp number and greeting
-    getJson<Record<string, string>>('/api/v1/settings/contact').then((result) => {
-      if (result.success && result.data) {
-        setPhone(result.data.socialWhatsapp || '');
-        setGreeting(result.data.whatsappGreeting || '');
-      }
-    }).catch(() => {});
-  }, []);
+export function WhatsAppButton({ contact }: { contact: Record<string, string> }) {
+  const phone = contact.socialWhatsapp || '';
+  const greeting = contact.whatsappGreeting || '';
 
   if (!phone) return null;
 

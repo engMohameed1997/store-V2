@@ -8,14 +8,13 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
 import type { CategoryWithChildren } from '@/lib/types/store';
 
-export default function Header() {
+export default function Header({ categories }: { categories: CategoryWithChildren[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -25,16 +24,6 @@ export default function Header() {
   useEffect(() => setMounted(true), []);
   const megaRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
-  // Fetch categories
-  useEffect(() => {
-    fetch('/api/v1/categories')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) setCategories(data.data);
-      })
-      .catch(() => { });
-  }, []);
 
   // Scroll detection for header shadow
   useEffect(() => {

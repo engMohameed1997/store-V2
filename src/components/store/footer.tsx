@@ -1,29 +1,9 @@
-'use client';
-
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { Phone, MapPin } from 'lucide-react';
 import type { CategoryWithChildren } from '@/lib/types/store';
 
-export default function Footer() {
-  const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
-  const [social, setSocial] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    fetch('/api/v1/categories')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) setCategories(data.data);
-      })
-      .catch(() => { });
-
-    fetch('/api/v1/settings/contact')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) setSocial(data.data);
-      })
-      .catch(() => { });
-  }, []);
+export default function Footer({ categories, contact }: { categories: CategoryWithChildren[]; contact: Record<string, string> }) {
+  const social = contact;
 
   const socialLinks = [
     { key: 'socialInstagram', label: 'انستغرام', icon: '/icons/instagram.svg', hoverColor: '#E4405F' },
