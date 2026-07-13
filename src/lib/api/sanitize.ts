@@ -39,9 +39,15 @@ export function sanitizeString(input: string): string {
 
   cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
 
+  cleaned = cleaned.replace(/<script[\s\S]*?<\/script>/gi, "");
+
+  cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, "");
+
   for (const pattern of DANGEROUS_PATTERNS) {
     cleaned = cleaned.replace(pattern, "");
   }
+
+  cleaned = escapeHtml(cleaned);
 
   return cleaned;
 }

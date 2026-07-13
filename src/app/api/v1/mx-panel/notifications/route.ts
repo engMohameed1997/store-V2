@@ -16,7 +16,7 @@ export const POST = superAdminRoute(async (request: NextRequest) => {
   const input = await validateBody(request, sendNotificationSchema);
 
   // Find target users
-  const where: Record<string, any> = { deletedAt: null };
+  const where: Record<string, string | null> = { deletedAt: null };
   if (input.target === "CUSTOMERS") {
     where.role = "CUSTOMER";
   } else if (input.target === "ADMINS") {

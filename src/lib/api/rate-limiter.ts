@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientIp, extractToken, verifyAccessToken } from "./auth-guard";
+import { getClientIp, extractToken } from "./auth-guard";
+import { verifyAccessToken } from "./jwt";
 import { apiError } from "./response";
 import { redis } from "@/lib/redis";
 
@@ -20,14 +21,26 @@ const RATE_LIMITS: Record<string, RateLimitConfig> = {
   chat_daily: { windowSec: 86400, maxRequests: 100 },
 };
 
+function getRateLimitIdentity(request: NextRequest): string {
+  const ip = getClientIp(request);
+  try {
+    const token = extractToken(request);
+    const payload = verifyAccessToken(token);
+    if (payload.userId) return `u:${payload.userId}`;
+  } catch {
+    // anonymous request — fall back to IP
+  }
+  return ip;
+}
+
 export async function checkRateLimit(
   request: NextRequest,
   tier: keyof typeof RATE_LIMITS = "default"
 ): Promise<NextResponse | null> {
   const config = RATE_LIMITS[tier];
-  const ip = getClientIp(request);
+  const identity = getRateLimitIdentity(request);
   const path = new URL(request.url).pathname;
-  const key = `rl:${ip}:${path}:${tier}`;
+  const key = `rl:${identity}:${path}:${tier}`;
 
   // Atomic INCR: if key doesn't exist Redis creates it at 0 then increments to 1
   let count: number;
@@ -73,9 +86,9 @@ export async function getRateLimitHeaders(
   tier: keyof typeof RATE_LIMITS = "default"
 ): Promise<Record<string, string>> {
   const config = RATE_LIMITS[tier];
-  const ip = getClientIp(request);
+  const identity = getRateLimitIdentity(request);
   const path = new URL(request.url).pathname;
-  const key = `rl:${ip}:${path}:${tier}`;
+  const key = `rl:${identity}:${path}:${tier}`;
 
   const count = await redis.get<number>(key) ?? 0;
   const remaining = Math.max(0, config.maxRequests - count);
