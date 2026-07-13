@@ -14,7 +14,7 @@ export const updateProfileSchema = z.object({
     .regex(/^[\p{L}\s'-]+$/u)
     .optional(),
   avatar: z.string().regex(
-    /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
+    /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp))$/i,
     "Avatar must be uploaded via the /api/v1/uploads endpoint first"
   ).optional().nullable(),
 });

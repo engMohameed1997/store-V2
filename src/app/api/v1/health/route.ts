@@ -13,11 +13,15 @@ export async function GET() {
     dbStatus = "unreachable";
   }
 
+  const isProd = process.env.NODE_ENV === "production";
+
   return NextResponse.json({
     status: dbStatus === "ok" ? "healthy" : "degraded",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-    database: dbStatus,
-    responseTime: `${Date.now() - start}ms`,
+    ...(!isProd && {
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      database: dbStatus,
+      responseTime: `${Date.now() - start}ms`,
+    }),
   }, { status: dbStatus === "ok" ? 200 : 503 });
 }

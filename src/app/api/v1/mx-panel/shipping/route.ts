@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { adminRoute } from "@/lib/api/route-handler";
 import { apiSuccess, apiCreated } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
+import { sanitizeString } from "@/lib/api/sanitize";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -23,6 +24,7 @@ export const GET = adminRoute(async () => {
 
 export const POST = adminRoute(async (request: NextRequest) => {
   const input = await validateBody(request, shippingZoneSchema);
-  const zone = await db.shippingZone.create({ data: input });
+  const sanitized = { ...input, name: sanitizeString(input.name) };
+  const zone = await db.shippingZone.create({ data: sanitized });
   return apiCreated(zone);
 });

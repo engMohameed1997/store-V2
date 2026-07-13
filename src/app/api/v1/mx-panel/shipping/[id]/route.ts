@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { adminRoute } from "@/lib/api/route-handler";
 import { apiSuccess, apiNoContent } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
+import { sanitizeString } from "@/lib/api/sanitize";
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
 import { z } from "zod";
@@ -27,7 +28,8 @@ export const PUT = adminRoute(async (request: NextRequest, context) => {
   const input = await validateBody(request, updateShippingZoneSchema);
   const existing = await db.shippingZone.findUnique({ where: { id } });
   if (!existing) throw Errors.notFound("ShippingZone");
-  const zone = await db.shippingZone.update({ where: { id }, data: input });
+  const sanitized = { ...input, name: input.name ? sanitizeString(input.name) : undefined };
+  const zone = await db.shippingZone.update({ where: { id }, data: sanitized });
   return apiSuccess(zone);
 });
 

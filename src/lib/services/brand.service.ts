@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
+import { sanitizeString } from "@/lib/api/sanitize";
 
 export class BrandService {
   static async list(activeOnly = true) {
@@ -34,7 +35,14 @@ export class BrandService {
       .replace(/^-|-$/g, "");
     if (!slug) slug = `brand-${Date.now().toString(36)}`;
 
-    return db.brand.create({ data: { ...data, slug } });
+    const sanitized = {
+      ...data,
+      name: sanitizeString(data.name),
+      nameAr: data.nameAr ? sanitizeString(data.nameAr) : undefined,
+      description: data.description ? sanitizeString(data.description) : undefined,
+    };
+
+    return db.brand.create({ data: { ...sanitized, slug } });
   }
 
   static async update(
@@ -51,6 +59,9 @@ export class BrandService {
     if (!existing) throw Errors.notFound("Brand");
 
     const updateData: Record<string, unknown> = { ...data };
+    if (data.name) updateData.name = sanitizeString(data.name);
+    if (data.nameAr) updateData.nameAr = sanitizeString(data.nameAr);
+    if (data.description) updateData.description = sanitizeString(data.description);
     if (data.name) {
       let slug = data.name
         .toLowerCase()

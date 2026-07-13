@@ -9,7 +9,7 @@ const createBrandSchema = z.object({
   name: z.string().min(2).max(100),
   nameAr: z.string().min(2).max(100).optional(),
   logo: z.string().regex(
-    /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
+    /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp))$/i,
     "يجب رفع الصورة أولاً عبر نقطة الرفع الموحدة"
   ).optional(),
   description: z.string().max(500).optional(),

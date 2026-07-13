@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { adminRoute } from "@/lib/api/route-handler";
 import { apiSuccess, apiCreated } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
+import { sanitizeString } from "@/lib/api/sanitize";
 import { BannerService } from "@/lib/services/banner.service";
 import { crudCreate } from "@/lib/api/crud";
 import { z } from "zod";
@@ -10,18 +11,21 @@ const createBannerSchema = z.object({
   title: z.string().min(1).max(200),
   titleAr: z.string().max(200).optional(),
   image: z.string().regex(
-    /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
+    /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp))$/i,
     "يجب رفع الصورة أولاً عبر نقطة الرفع الموحدة"
   ),
   mobileImage: z.string().regex(
-    /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
+    /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp))$/i,
     "يجب رفع الصورة أولاً عبر نقطة الرفع الموحدة"
   ).optional(),
   videoUrl: z.string().regex(
-    /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(mp4|webm)$/i,
+    /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(mp4|webm)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(mp4|webm))$/i,
     "يجب رفع الفيديو أولاً عبر نقطة الرفع الموحدة"
   ).optional(),
-  link: z.string().url().optional(),
+  link: z.string().url().refine(
+    (url) => !url.toLowerCase().startsWith("javascript:") && !url.toLowerCase().startsWith("data:"),
+    "Invalid URL protocol"
+  ).optional(),
   position: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
   startsAt: z.coerce.date().optional(),
@@ -35,5 +39,10 @@ export const GET = adminRoute(async () => {
 
 export const POST = adminRoute(async (request: NextRequest) => {
   const input = await validateBody(request, createBannerSchema);
-  return crudCreate(input as unknown as Record<string, unknown>, { model: "banner" });
+  const sanitized = {
+    ...input,
+    title: sanitizeString(input.title),
+    titleAr: input.titleAr ? sanitizeString(input.titleAr) : undefined,
+  };
+  return crudCreate(sanitized as unknown as Record<string, unknown>, { model: "banner" });
 });

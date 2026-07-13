@@ -28,7 +28,7 @@ const productBaseSchema = z.object({
         url: z
           .string()
           .regex(
-            /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i,
+            /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp))$/i,
             "Image must be uploaded via the /api/v1/uploads endpoint first"
           ),
         alt: z.string().max(255).optional(),

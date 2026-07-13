@@ -107,7 +107,7 @@ export default function BannersPage() {
     }
   };
 
-  const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp|mp4|webm)$/i;
+  const uploadPathPattern = /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp|mp4|webm)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp|mp4|webm))$/i;
 
   const handleBannerUpload = async (field: 'image' | 'mobileImage' | 'videoUrl', file?: File) => {
     if (!file) return;

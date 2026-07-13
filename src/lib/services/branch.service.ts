@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
+import { sanitizeString } from "@/lib/api/sanitize";
 
 export class BranchService {
   static async list(activeOnly = false) {
@@ -29,7 +30,15 @@ export class BranchService {
     phone: string;
     isActive?: boolean;
   }) {
-    return db.branch.create({ data });
+    const sanitized = {
+      ...data,
+      name: sanitizeString(data.name),
+      nameAr: data.nameAr ? sanitizeString(data.nameAr) : undefined,
+      address: sanitizeString(data.address),
+      addressAr: data.addressAr ? sanitizeString(data.addressAr) : undefined,
+    };
+
+    return db.branch.create({ data: sanitized });
   }
 
   static async update(
@@ -46,7 +55,13 @@ export class BranchService {
     const existing = await db.branch.findUnique({ where: { id }, select: { id: true } });
     if (!existing) throw Errors.notFound("Branch");
 
-    return db.branch.update({ where: { id }, data });
+    const sanitized: Record<string, unknown> = { ...data };
+    if (data.name) sanitized.name = sanitizeString(data.name);
+    if (data.nameAr) sanitized.nameAr = sanitizeString(data.nameAr);
+    if (data.address) sanitized.address = sanitizeString(data.address);
+    if (data.addressAr) sanitized.addressAr = sanitizeString(data.addressAr);
+
+    return db.branch.update({ where: { id }, data: sanitized });
   }
 
   static async delete(id: string) {

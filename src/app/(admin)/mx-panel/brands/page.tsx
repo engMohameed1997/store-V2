@@ -28,7 +28,7 @@ export default function BrandsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
 
-  const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
+  const uploadPathPattern = /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp))$/i;
 
   const handleLogoUpload = async (file?: File) => {
     if (!file) return;

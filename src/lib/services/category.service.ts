@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
+import { sanitizeString } from "@/lib/api/sanitize";
 
 const CATEGORY_INCLUDE = {
   children: {
@@ -59,8 +60,15 @@ export class CategoryService {
       .replace(/^-|-$/g, "");
     if (!slug) slug = `category-${Date.now().toString(36)}`;
 
+    const sanitized = {
+      ...data,
+      name: sanitizeString(data.name),
+      nameAr: data.nameAr ? sanitizeString(data.nameAr) : undefined,
+      description: data.description ? sanitizeString(data.description) : undefined,
+    };
+
     return db.category.create({
-      data: { ...data, slug },
+      data: { ...sanitized, slug },
       include: CATEGORY_INCLUDE,
     });
   }
@@ -81,6 +89,9 @@ export class CategoryService {
     if (!existing) throw Errors.notFound("Category");
 
     const updateData: Record<string, unknown> = { ...data };
+    if (data.name) updateData.name = sanitizeString(data.name);
+    if (data.nameAr) updateData.nameAr = sanitizeString(data.nameAr);
+    if (data.description) updateData.description = sanitizeString(data.description);
     if (data.name) {
       let slug = data.name
         .toLowerCase()

@@ -10,6 +10,7 @@ const HTML_ENTITIES: Record<string, string> = {
 
 const DANGEROUS_PATTERNS = [
   /(<script[\s>])/gi,
+  /(<\/script>)/gi,
   /(javascript\s*:)/gi,
   /(on\w+\s*=)/gi,
   /(data\s*:\s*text\/html)/gi,

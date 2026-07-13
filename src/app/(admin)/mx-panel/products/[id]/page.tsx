@@ -154,7 +154,7 @@ export default function EditProductPage() {
 
         // Load images — clear any legacy external URLs that don't match the upload path pattern
         if (Array.isArray(p.images)) {
-          const uploadPathPattern = /^\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i;
+          const uploadPathPattern = /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp))$/i;
           const loadedImages: ImageInput[] = (p.images as Array<Record<string, unknown>>).map((img) => {
             const raw = typeof img === 'string' ? img : (img.url as string) || '';
             return {

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { adminRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
+import { sanitizeString } from "@/lib/api/sanitize";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -67,10 +68,11 @@ export const PUT = adminRoute(async (request: NextRequest) => {
   const input = await validateBody(request, updateSettingsSchema);
 
   for (const [key, value] of Object.entries(input)) {
+    const sanitized = typeof value === "string" ? sanitizeString(value) : value;
     await db.storeSetting.upsert({
       where: { key },
-      create: { key, value: value as string | number | boolean, group: "general" },
-      update: { value: value as string | number | boolean },
+      create: { key, value: sanitized as string | number | boolean, group: "general" },
+      update: { value: sanitized as string | number | boolean },
     });
   }
 
