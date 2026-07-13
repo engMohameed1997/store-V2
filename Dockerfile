@@ -34,7 +34,10 @@ RUN npm run build
 # ============================================
 FROM node:20-alpine AS runner
 
-RUN apk add --no-cache libc6-compat openssl curl netcat-openbsd
+RUN apk add --no-cache libc6-compat openssl curl netcat-openbsd wget
+
+# Install MinIO Client (mc) for bucket setup in entrypoint
+RUN wget -qO /usr/local/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x /usr/local/bin/mc
 
 WORKDIR /app
 
@@ -63,6 +66,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
+# mc needs root for initial bucket setup; app runs as nextjs after
 USER nextjs
 
 EXPOSE 3000

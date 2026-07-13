@@ -1,8 +1,7 @@
 import { db } from "@/lib/db";
 import { Errors } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
-import fs from "fs/promises";
-import path from "path";
+import { deleteObject } from "@/lib/storage";
 
 export class MediaService {
   static async list() {
@@ -27,12 +26,11 @@ export class MediaService {
     // Remove from DB first
     await db.mediaAsset.delete({ where: { id } });
 
-    // Try deleting the physical file
+    // Try deleting the object from MinIO
     try {
-      const filePath = path.join(process.cwd(), "public", asset.url);
-      await fs.unlink(filePath);
+      await deleteObject(asset.url);
     } catch (err) {
-      logger.error("Failed to delete physical file", { path: `public${asset.url}`, error: err });
+      logger.error("Failed to delete object from MinIO", { url: asset.url, error: err });
     }
   }
 }

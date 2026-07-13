@@ -84,6 +84,13 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+
+      # MinIO (Object Storage for Uploads)
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-/minio}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-store_minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:-store-uploads}
     networks:
       - store-network
     security_opt:
@@ -93,6 +100,29 @@ services:
         limits:
           memory: 6G
           cpus: "3.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # MinIO — S3-Compatible Object Storage for Uploads
+  # ============================================
+  minio:
+    image: minio/minio:latest
+    container_name: store-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-store_minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - minio_data:/data
+    networks:
+      - store-network
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: json-file
       options:
@@ -139,6 +169,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  minio_data:
     driver: local
 
 networks:

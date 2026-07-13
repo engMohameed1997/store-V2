@@ -1,12 +1,14 @@
 import sharp, { type Metadata as SharpMetadata } from "sharp";
 import path from "path";
 import fs from "fs/promises";
+import os from "os";
 import crypto from "crypto";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import ffmpegPath from "ffmpeg-static";
 import { Errors } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
+import { uploadObject } from "@/lib/storage";
 
 const execFileAsync = promisify(execFile);
 
@@ -14,8 +16,6 @@ export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
 export const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB per video
 export const MAX_FILES_PER_REQUEST = 10;
 const MAX_IMAGE_DIMENSION = 8000; // pixels — prevents decompression bombs
-
-const UPLOAD_BASE_DIR = path.join(process.cwd(), "public", "uploads");
 
 type AllowedMime = "image/jpeg" | "image/png" | "image/webp";
 type AllowedVideoMime = "video/mp4" | "video/webm";
@@ -147,17 +147,12 @@ export class UploadService {
 
     // ── 5. Sanitize Folder Name (prevent path traversal) ─────────────────────
     const sanitizedFolder = folder.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 50) || "general";
-    const folderPath = path.join(UPLOAD_BASE_DIR, sanitizedFolder);
-    await fs.mkdir(folderPath, { recursive: true });
 
-    // ── 6. Generate UUID Filename + Write with Exclusive Flag ────────────────
-    // "wx" flag at OS level: fails atomically if file already exists (no overwrite possible)
+    // ── 6. Generate UUID Filename + Upload to MinIO ──────────────────────────
     const filename = `${crypto.randomUUID()}.${outputExt}`;
-    const filePath = path.join(folderPath, filename);
+    const key = `${sanitizedFolder}/${filename}`;
 
-    await fs.writeFile(filePath, processedBuffer, { flag: "wx" });
-
-    const url = `/uploads/${sanitizedFolder}/${filename}`;
+    const url = await uploadObject(key, processedBuffer, outputMime);
 
     logger.info("Upload saved", { url, width, height, size: processedBuffer.length, mime: outputMime, by: byTag });
 
@@ -184,17 +179,16 @@ export class UploadService {
     const outputExt = detectedMime === "video/mp4" ? "mp4" : "webm";
 
     const sanitizedFolder = folder.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 50) || "general";
-    const folderPath = path.join(UPLOAD_BASE_DIR, sanitizedFolder);
-    await fs.mkdir(folderPath, { recursive: true });
 
+    const tmpDir = os.tmpdir();
     const tmpId = crypto.randomUUID();
-    const tmpInput = path.join(folderPath, `tmp_in_${tmpId}.${outputExt}`);
+    const tmpInput = path.join(tmpDir, `tmp_in_${tmpId}.${outputExt}`);
+    const tmpOutput = path.join(tmpDir, `tmp_out_${tmpId}.${outputExt}`);
     const filename = `${crypto.randomUUID()}.${outputExt}`;
-    const filePath = path.join(folderPath, filename);
 
     try {
       // Write raw buffer to a temp file for ffmpeg to read
-      await fs.writeFile(tmpInput, buffer, { flag: "wx" });
+      await fs.writeFile(tmpInput, buffer);
 
       // Re-encode stripping all metadata: -map_metadata -1 removes all global metadata
       // -c:v copy -c:a copy keeps original streams (no quality loss, fast)
@@ -205,24 +199,23 @@ export class UploadService {
         "-c:a", "copy",
         "-movflags", "+faststart",
         "-y",
-        filePath,
+        tmpOutput,
       ]);
 
-      // Read back the processed file to get its size
-      const stat = await fs.stat(filePath);
-      const url = `/uploads/${sanitizedFolder}/${filename}`;
+      // Read back the processed file and upload to MinIO
+      const processedBuffer = await fs.readFile(tmpOutput);
+      const key = `${sanitizedFolder}/${filename}`;
+      const url = await uploadObject(key, processedBuffer, detectedMime);
 
-      logger.info("Video upload saved", { url, size: stat.size, mime: detectedMime, by: byTag });
+      logger.info("Video upload saved", { url, size: processedBuffer.length, mime: detectedMime, by: byTag });
 
-      return { url, filename, size: stat.size, mimeType: detectedMime, width: 0, height: 0 };
+      return { url, filename, size: processedBuffer.length, mimeType: detectedMime, width: 0, height: 0 };
     } catch (err) {
       logger.error("Video processing failed", { by: byTag, error: String(err) });
-      // Clean up output file if it was partially written
-      await fs.unlink(filePath).catch(() => {});
       throw Errors.badRequest("Video processing failed — the file may be corrupt or unsupported");
     } finally {
-      // Always remove the temp input file
       await fs.unlink(tmpInput).catch(() => {});
+      await fs.unlink(tmpOutput).catch(() => {});
     }
   }
 }
