@@ -70,13 +70,7 @@ export default function HeroSlider({ banners }: Props) {
             i === current ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
           }`}
         >
-          {banner.link ? (
-            <Link href={banner.link} className="block w-full h-full">
-              <BannerContent banner={banner} />
-            </Link>
-          ) : (
-            <BannerContent banner={banner} />
-          )}
+          <BannerContent banner={banner} />
         </div>
       ))}
 
@@ -131,19 +125,12 @@ function BannerContent({ banner }: { banner: Banner }) {
       {banner.image && (
         <img
           src={banner.image}
-          alt={banner.title}
+          alt="banner"
           className="absolute inset-0 w-full h-full object-cover"
         />
       )}
       {/* Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-      {/* Text content */}
-      <div className="relative z-10 text-center text-white px-6">
-        <h2 className="text-2xl md:text-4xl font-black mb-2 drop-shadow-lg">{banner.titleAr || banner.title}</h2>
-        <span className="inline-block bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 mt-4">
-          تسوق الآن
-        </span>
-      </div>
       {/* Decorative */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
       <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/5 rounded-full translate-x-1/3 translate-y-1/3" />

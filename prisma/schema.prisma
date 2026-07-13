@@ -1057,12 +1057,9 @@ model ShippingZone {
 
 model Banner {
   id        String          @id @default(cuid())
-  title     String
-  titleAr   String?         @map("title_ar")
   image     String
   mobileImage String?       @map("mobile_image")
   videoUrl  String?         @map("video_url")
-  link      String?
   placement BannerPlacement @default(HOME_HERO)
   position  Int             @default(0)
   isActive  Boolean         @default(true) @map("is_active")

@@ -257,12 +257,9 @@ export type UpdateCouponInput = Partial<CreateCouponInput>;
 
 export interface AdminBanner {
   id: string;
-  title: string;
-  titleAr?: string;
   image: string;
   mobileImage?: string;
   videoUrl?: string;
-  link?: string;
   position: number;
   isActive: boolean;
   startsAt?: string;
@@ -271,12 +268,9 @@ export interface AdminBanner {
 }
 
 export interface CreateBannerInput {
-  title: string;
-  titleAr?: string;
   image: string;
   mobileImage?: string;
   videoUrl?: string;
-  link?: string;
   position?: number;
   isActive?: boolean;
   startsAt?: string;

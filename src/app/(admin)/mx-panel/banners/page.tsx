@@ -24,7 +24,7 @@ export default function BannersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    title: '', titleAr: '', image: '', mobileImage: '', videoUrl: '', link: '', position: '1',
+    image: '', mobileImage: '', videoUrl: '', position: '1',
   });
   const [submitting, setSubmitting] = useState(false);
   const [uploadingField, setUploadingField] = useState<'image' | 'mobileImage' | 'video' | null>(null);
@@ -54,7 +54,7 @@ export default function BannersPage() {
 
   const resetForm = () => {
     const maxPosition = banners.length > 0 ? Math.max(...banners.map(b => b.position)) : 0;
-    setFormData({ title: '', titleAr: '', image: '', mobileImage: '', videoUrl: '', link: '', position: String(maxPosition + 1) });
+    setFormData({ image: '', mobileImage: '', videoUrl: '', position: String(maxPosition + 1) });
     setShowForm(false);
     setEditingId(null);
   };
@@ -63,23 +63,19 @@ export default function BannersPage() {
     e.preventDefault();
     if (!client || submitting) return;
 
-    const title = formData.title.trim();
     const image = formData.image.trim();
 
-    if (!title || !image) {
-      alert('العنوان وصورة البانر مطلوبان');
+    if (!image) {
+      alert('صورة البانر مطلوبة');
       return;
     }
 
     setSubmitting(true);
     try {
-      const payload: CreateBannerInput & { videoUrl?: string } = {
-        title,
-        titleAr: formData.titleAr.trim() || undefined,
+      const payload: CreateBannerInput = {
         image,
         mobileImage: formData.mobileImage.trim() || undefined,
         videoUrl: formData.videoUrl.trim() || undefined,
-        link: formData.link.trim() || undefined,
         position: Number(formData.position) || 0,
       };
 
@@ -128,12 +124,9 @@ export default function BannersPage() {
 
   const handleEdit = (banner: AdminBanner) => {
     setFormData({
-      title: banner.title,
-      titleAr: banner.titleAr || '',
       image: uploadPathPattern.test(banner.image) ? banner.image : '',
       mobileImage: banner.mobileImage && uploadPathPattern.test(banner.mobileImage) ? banner.mobileImage : '',
       videoUrl: banner.videoUrl || '',
-      link: banner.link || '',
       position: String(banner.position),
     });
     setEditingId(banner.id);
@@ -180,25 +173,6 @@ export default function BannersPage() {
         <form onSubmit={handleSubmit} className="mb-6 bg-card border border-border rounded-2xl p-5">
           <h3 className="font-bold text-foreground mb-4">{editingId ? 'تعديل البانر' : 'إضافة بانر جديد'}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">العنوان *</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">العنوان (عربي)</label>
-              <input
-                type="text"
-                value={formData.titleAr}
-                onChange={(e) => setFormData({ ...formData, titleAr: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-              />
-            </div>
             {/* Banner Image Upload */}
             <div className="sm:col-span-2 lg:col-span-1">
               <label className="block text-xs font-medium text-muted-foreground mb-1">صورة البانر *</label>
@@ -305,17 +279,6 @@ export default function BannersPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">رابط التوجيه</label>
-              <input
-                type="url"
-                value={formData.link}
-                onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary transition text-sm"
-                dir="ltr"
-                placeholder="https://..."
-              />
-            </div>
-            <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">الترتيب</label>
               <input
                 type="number"
@@ -368,7 +331,7 @@ export default function BannersPage() {
               <div className="aspect-[16/7] bg-muted relative">
                 <img
                   src={banner.image}
-                  alt={banner.title}
+                  alt="banner"
                   className="w-full h-full object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
@@ -388,8 +351,6 @@ export default function BannersPage() {
                 </div>
               </div>
               <div className="p-4">
-                <h3 className="font-medium text-foreground text-sm truncate">{banner.title}</h3>
-                {banner.titleAr && <p className="text-xs text-muted-foreground truncate">{banner.titleAr}</p>}
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-[10px] text-muted-foreground">ترتيب: {banner.position}</span>
                   <div className="flex gap-1">

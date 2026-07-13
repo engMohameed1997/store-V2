@@ -57,11 +57,9 @@ export interface CategoryWithChildren {
 
 export interface Banner {
   id: string;
-  title: string;
-  titleAr: string | null;
   image: string;
   mobileImage: string | null;
-  link: string | null;
+  videoUrl: string | null;
   placement: string;
   position: number;
   isActive: boolean;
