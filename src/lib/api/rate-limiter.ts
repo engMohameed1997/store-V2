@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientIp } from "./auth-guard";
+import { getClientIp, extractToken, verifyAccessToken } from "./auth-guard";
 import { apiError } from "./response";
 import { redis } from "@/lib/redis";
 

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { superAdminRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { db } from "@/lib/db";
@@ -12,7 +12,7 @@ const sendNotificationSchema = z.object({
   target: z.enum(["ALL", "CUSTOMERS", "ADMINS"]).default("ALL"),
 });
 
-export const POST = adminRoute(async (request: NextRequest) => {
+export const POST = superAdminRoute(async (request: NextRequest) => {
   const input = await validateBody(request, sendNotificationSchema);
 
   // Find target users

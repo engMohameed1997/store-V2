@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { warehouseRoute } from "@/lib/api/route-handler";
 import { apiSuccess, apiNoContent } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { sanitizeString } from "@/lib/api/sanitize";
@@ -16,14 +16,14 @@ const updateShippingZoneSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export const GET = adminRoute(async (_request: NextRequest, context) => {
+export const GET = warehouseRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
   const zone = await db.shippingZone.findUnique({ where: { id } });
   if (!zone) throw Errors.notFound("ShippingZone");
   return apiSuccess(zone);
 });
 
-export const PUT = adminRoute(async (request: NextRequest, context) => {
+export const PUT = warehouseRoute(async (request: NextRequest, context) => {
   const { id } = await context.params;
   const input = await validateBody(request, updateShippingZoneSchema);
   const existing = await db.shippingZone.findUnique({ where: { id } });
@@ -33,7 +33,7 @@ export const PUT = adminRoute(async (request: NextRequest, context) => {
   return apiSuccess(zone);
 });
 
-export const DELETE = adminRoute(async (_request: NextRequest, context) => {
+export const DELETE = warehouseRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
   const existing = await db.shippingZone.findUnique({ where: { id } });
   if (!existing) throw Errors.notFound("ShippingZone");

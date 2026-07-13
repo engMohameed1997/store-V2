@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { warehouseRoute } from "@/lib/api/route-handler";
 import { apiPaginated, apiCreated } from "@/lib/api/response";
 import { validateBody, validateQuery } from "@/lib/api/validate";
 import { createProductSchema, productSearchSchema } from "@/lib/validators/product";
 import { ProductService } from "@/lib/services/product.service";
 import { sanitizeSearchQuery } from "@/lib/api/sanitize";
 
-export const GET = adminRoute(async (request: NextRequest) => {
+export const GET = warehouseRoute(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const query = validateQuery(searchParams, productSearchSchema);
 
@@ -29,7 +29,7 @@ export const GET = adminRoute(async (request: NextRequest) => {
   return apiPaginated(result.products, result.total, result.page, result.limit);
 });
 
-export const POST = adminRoute(async (request: NextRequest) => {
+export const POST = warehouseRoute(async (request: NextRequest) => {
   const input = await validateBody(request, createProductSchema);
   const product = await ProductService.create(input);
   return apiCreated(product);

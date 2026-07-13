@@ -76,6 +76,24 @@ export const createProductSchema = productBaseSchema
       (data.warrantyDuration && data.warrantyUnit) ||
       (!data.warrantyDuration && !data.warrantyUnit),
     { message: "warrantyDuration and warrantyUnit must both be provided or both omitted", path: ["warrantyUnit"] }
+  )
+  .refine(
+    (data) =>
+      data.costPrice === undefined ||
+      data.price === undefined ||
+      data.costPrice < data.price,
+    { message: "costPrice must be less than price", path: ["costPrice"] }
+  )
+  .refine(
+    (data) =>
+      !data.isDigital || data.weight === undefined,
+    { message: "Digital products cannot have a weight", path: ["weight"] }
+  )
+  .refine(
+    (data) =>
+      !data.images ||
+      data.images.filter((img) => img.isPrimary).length <= 1,
+    { message: "Only one image can be marked as primary", path: ["images"] }
   );
 
 export const updateProductSchema = productBaseSchema.partial()
@@ -91,6 +109,24 @@ export const updateProductSchema = productBaseSchema.partial()
       (data.warrantyDuration && data.warrantyUnit) ||
       (!data.warrantyDuration && !data.warrantyUnit),
     { message: "warrantyDuration and warrantyUnit must both be provided or both omitted", path: ["warrantyUnit"] }
+  )
+  .refine(
+    (data) =>
+      data.costPrice === undefined ||
+      data.price === undefined ||
+      data.costPrice < data.price,
+    { message: "costPrice must be less than price", path: ["costPrice"] }
+  )
+  .refine(
+    (data) =>
+      !data.isDigital || data.weight === undefined,
+    { message: "Digital products cannot have a weight", path: ["weight"] }
+  )
+  .refine(
+    (data) =>
+      !data.images ||
+      data.images.filter((img) => img.isPrimary).length <= 1,
+    { message: "Only one image can be marked as primary", path: ["images"] }
   );
 
 export const productSearchSchema = z.object({

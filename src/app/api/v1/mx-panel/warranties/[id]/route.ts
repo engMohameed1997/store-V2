@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { warehouseRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { WarrantyService } from "@/lib/services/warranty.service";
@@ -11,13 +11,13 @@ const updateWarrantySchema = z.object({
   coverage: z.string().max(1000).optional(),
 });
 
-export const GET = adminRoute(async (_request: NextRequest, context) => {
+export const GET = warehouseRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
   const warranty = await WarrantyService.getById(id);
   return apiSuccess(warranty);
 });
 
-export const PUT = adminRoute(async (request: NextRequest, context) => {
+export const PUT = warehouseRoute(async (request: NextRequest, context) => {
   const { id } = await context.params;
   const input = await validateBody(request, updateWarrantySchema);
   const warranty = await WarrantyService.update(id, input);

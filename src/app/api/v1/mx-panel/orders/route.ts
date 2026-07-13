@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { salesRoute } from "@/lib/api/route-handler";
 import { apiPaginated } from "@/lib/api/response";
 import { OrderService } from "@/lib/services/order.service";
 
-export const GET = adminRoute(async (request: NextRequest) => {
+export const GET = salesRoute(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
 
   const result = await OrderService.adminList({

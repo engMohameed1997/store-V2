@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { adminRoute, superAdminRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { sanitizeString } from "@/lib/api/sanitize";
@@ -64,7 +64,7 @@ export const GET = adminRoute(async () => {
   return apiSuccess(result);
 });
 
-export const PUT = adminRoute(async (request: NextRequest) => {
+export const PUT = superAdminRoute(async (request: NextRequest) => {
   const input = await validateBody(request, updateSettingsSchema);
 
   for (const [key, value] of Object.entries(input)) {

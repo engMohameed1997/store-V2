@@ -6,6 +6,11 @@ export async function validateBody<T>(
   request: NextRequest,
   schema: ZodSchema<T>
 ): Promise<T> {
+  const contentType = request.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    throw Errors.badRequest("Content-Type must be application/json");
+  }
+
   let body: unknown;
 
   try {

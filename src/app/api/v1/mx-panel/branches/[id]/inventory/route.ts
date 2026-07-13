@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { warehouseRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { BranchService } from "@/lib/services/branch.service";
@@ -11,13 +11,13 @@ const setInventorySchema = z.object({
   stock: z.number().int().nonnegative(),
 });
 
-export const GET = adminRoute(async (_request: NextRequest, context) => {
+export const GET = warehouseRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
   const inventory = await BranchService.getInventory(id);
   return apiSuccess(inventory);
 });
 
-export const POST = adminRoute(async (request: NextRequest, context) => {
+export const POST = warehouseRoute(async (request: NextRequest, context) => {
   const { id } = await context.params;
   const input = await validateBody(request, setInventorySchema);
   

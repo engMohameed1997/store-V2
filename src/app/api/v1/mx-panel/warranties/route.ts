@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { warehouseRoute } from "@/lib/api/route-handler";
 import { apiPaginated } from "@/lib/api/response";
 import { WarrantyService } from "@/lib/services/warranty.service";
 import { sanitizeSearchQuery } from "@/lib/api/sanitize";
 
-export const GET = adminRoute(async (request: NextRequest) => {
+export const GET = warehouseRoute(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
 
   const result = await WarrantyService.list({

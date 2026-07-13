@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { warehouseRoute } from "@/lib/api/route-handler";
 import { apiSuccess, apiCreated } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { BranchService } from "@/lib/services/branch.service";
@@ -15,12 +15,12 @@ const createBranchSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-export const GET = adminRoute(async () => {
+export const GET = warehouseRoute(async () => {
   const branches = await BranchService.list(false);
   return apiSuccess(branches);
 });
 
-export const POST = adminRoute(async (request: NextRequest) => {
+export const POST = warehouseRoute(async (request: NextRequest) => {
   const input = await validateBody(request, createBranchSchema);
   const branch = await BranchService.create(input);
   return apiCreated(branch);

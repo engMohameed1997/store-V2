@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { customerServiceRoute } from "@/lib/api/route-handler";
 import { apiSuccess, apiCreated, apiError } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { TicketService } from "@/lib/services/ticket.service";
@@ -14,14 +14,14 @@ const statusSchema = z.object({
   status: z.nativeEnum(TicketStatus),
 });
 
-export const GET = adminRoute(async (_request: NextRequest, context) => {
+export const GET = customerServiceRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
   const ticket = await TicketService.get(id);
   return apiSuccess(ticket);
 });
 
 // Post reply to ticket
-export const POST = adminRoute(async (request: NextRequest, context) => {
+export const POST = customerServiceRoute(async (request: NextRequest, context) => {
   const { id } = await context.params;
   const input = await validateBody(request, replySchema);
   const userId = context.user?.userId;
@@ -35,7 +35,7 @@ export const POST = adminRoute(async (request: NextRequest, context) => {
 });
 
 // Update ticket status
-export const PUT = adminRoute(async (request: NextRequest, context) => {
+export const PUT = customerServiceRoute(async (request: NextRequest, context) => {
   const { id } = await context.params;
   const input = await validateBody(request, statusSchema);
   

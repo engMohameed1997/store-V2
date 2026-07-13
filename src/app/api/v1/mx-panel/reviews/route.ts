@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { customerServiceRoute } from "@/lib/api/route-handler";
 import { crudList } from "@/lib/api/crud";
 
-export const GET = adminRoute(async (request: NextRequest) => {
+export const GET = customerServiceRoute(async (request: NextRequest) => {
   return crudList(request, {
     model: "review",
     searchFields: ["title", "comment"],

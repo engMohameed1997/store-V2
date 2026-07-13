@@ -319,6 +319,24 @@ export class ProductService {
       if (!branch) throw Errors.notFound("Branch");
     }
 
+    // Verify category exists if provided
+    if (sanitizedInput.categoryId) {
+      const category = await db.category.findUnique({
+        where: { id: sanitizedInput.categoryId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!category) throw Errors.notFound("Category");
+    }
+
+    // Verify brand exists if provided
+    if (sanitizedInput.brandId) {
+      const brand = await db.brand.findUnique({
+        where: { id: sanitizedInput.brandId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!brand) throw Errors.notFound("Brand");
+    }
+
     // Generate unique slug with retry for extremely rare collisions
     let finalSlug = generateSlug(sanitizedInput.name);
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -423,6 +441,24 @@ export class ProductService {
         select: { id: true },
       });
       if (!branch) throw Errors.notFound("Branch");
+    }
+
+    // Verify category exists if provided
+    if (sanitizedInput.categoryId) {
+      const category = await db.category.findUnique({
+        where: { id: sanitizedInput.categoryId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!category) throw Errors.notFound("Category");
+    }
+
+    // Verify brand exists if provided
+    if (sanitizedInput.brandId) {
+      const brand = await db.brand.findUnique({
+        where: { id: sanitizedInput.brandId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!brand) throw Errors.notFound("Brand");
     }
 
     const { images, specs, variants, branchId, ...productData } = sanitizedInput;

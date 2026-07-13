@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { salesRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { updateOrderStatusSchema } from "@/lib/validators/order";
@@ -12,13 +12,13 @@ const confirmPaymentSchema = z.object({
   transactionId: z.string().optional(),
 });
 
-export const GET = adminRoute(async (_request: NextRequest, context) => {
+export const GET = salesRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
   const order = await OrderService.getById(id);
   return apiSuccess(order);
 });
 
-export const PUT = adminRoute(async (request: NextRequest, context) => {
+export const PUT = salesRoute(async (request: NextRequest, context) => {
   const { id } = await context.params;
   const input = await validateBody(request, updateOrderStatusSchema);
   const order = await OrderService.updateStatus(id, input);
@@ -34,7 +34,7 @@ export const PUT = adminRoute(async (request: NextRequest, context) => {
   return apiSuccess(order);
 });
 
-export const POST = adminRoute(async (request: NextRequest, context) => {
+export const POST = salesRoute(async (request: NextRequest, context) => {
   const { id } = await context.params;
   const input = await validateBody(request, confirmPaymentSchema);
   const order = await OrderService.confirmPayment(id, input.transactionId);

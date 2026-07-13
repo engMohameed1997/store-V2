@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminRoute } from "@/lib/api/route-handler";
+import { warehouseRoute } from "@/lib/api/route-handler";
 import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { BranchService } from "@/lib/services/branch.service";
@@ -14,20 +14,20 @@ const updateBranchSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export const GET = adminRoute(async (_request: NextRequest, context) => {
+export const GET = warehouseRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
   const branch = await BranchService.get(id);
   return apiSuccess(branch);
 });
 
-export const PUT = adminRoute(async (request: NextRequest, context) => {
+export const PUT = warehouseRoute(async (request: NextRequest, context) => {
   const { id } = await context.params;
   const input = await validateBody(request, updateBranchSchema);
   const branch = await BranchService.update(id, input);
   return apiSuccess(branch);
 });
 
-export const DELETE = adminRoute(async (_request: NextRequest, context) => {
+export const DELETE = warehouseRoute(async (_request: NextRequest, context) => {
   const { id } = await context.params;
   await BranchService.delete(id);
   return apiSuccess({ message: "تم حذف الفرع بنجاح" });
