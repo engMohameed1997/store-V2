@@ -8,7 +8,7 @@ import { CategoryService } from '@/lib/services/category.service';
 import { BannerService } from '@/lib/services/banner.service';
 import { serialize } from '@/lib/utils/serialize';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function HomePage() {
   const [featuredResult, newResult, bestSellingResult, categories, banners] = await Promise.all([
