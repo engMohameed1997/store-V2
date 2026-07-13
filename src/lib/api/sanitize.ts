@@ -47,8 +47,6 @@ export function sanitizeString(input: string): string {
     cleaned = cleaned.replace(pattern, "");
   }
 
-  cleaned = escapeHtml(cleaned);
-
   return cleaned;
 }
 
