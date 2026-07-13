@@ -52,15 +52,16 @@ export const POST = protectedRoute(async (request: NextRequest, context) => {
     }
   }
 
-  // Calculate shipping from default address
+  // Calculate shipping from selected or default address
   let shipping: number | null = null;
-  const defaultAddress = await db.address.findFirst({
-    where: { userId, isDefault: true, deletedAt: null },
-  });
+  const addressWhere = input.addressId
+    ? { id: input.addressId, userId, deletedAt: null }
+    : { userId, isDefault: true, deletedAt: null };
+  const shippingAddress = await db.address.findFirst({ where: addressWhere });
 
-  if (defaultAddress) {
+  if (shippingAddress) {
     const shippingZone = await db.shippingZone.findFirst({
-      where: { governorates: { has: defaultAddress.governorate }, isActive: true },
+      where: { governorates: { has: shippingAddress.governorate }, isActive: true },
     });
 
     if (shippingZone) {

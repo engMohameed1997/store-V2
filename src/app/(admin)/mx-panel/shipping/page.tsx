@@ -11,6 +11,7 @@ import {
   X,
   Check,
   MapPin,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getJson, postJson, putJson, deleteJson } from '@/lib/client/api';
@@ -27,11 +28,10 @@ interface ShippingZone {
   isActive: boolean;
 }
 
-const IRAQ_GOVERNORATES = [
-  'بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف', 'كربلاء', 'ذي قار',
-  'بابل', 'الأنبار', 'ديالى', 'كركوك', 'صلاح الدين', 'واسط',
-  'ميسان', 'المثنى', 'القادسية', 'دهوك', 'السليمانية',
-];
+interface LocationData {
+  name: string;
+  districts: { name: string; subDistricts: string[] }[];
+}
 
 export default function ShippingPage() {
   const { isAuthenticated } = useAuth();
@@ -49,8 +49,18 @@ export default function ShippingPage() {
   const [formFreeAbove, setFormFreeAbove] = useState('');
   const [formEstimatedDays, setFormEstimatedDays] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
+  const [locations, setLocations] = useState<LocationData[]>([]);
+  const [expandedGov, setExpandedGov] = useState<string | null>(null);
 
   const opts = {};
+
+  useEffect(() => {
+    getJson<{ governorates: LocationData[] }>('/api/v1/locations').then((res) => {
+      if (res.success && res.data) {
+        setLocations((res.data as { governorates: LocationData[] }).governorates);
+      }
+    });
+  }, []);
 
   const fetchZones = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -251,21 +261,43 @@ export default function ShippingPage() {
             {/* Governorates Selection */}
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-2">المحافظات المشمولة *</label>
-              <div className="flex flex-wrap gap-2">
-                {IRAQ_GOVERNORATES.map((gov) => (
-                  <button
-                    key={gov}
-                    type="button"
-                    onClick={() => toggleGovernorate(gov)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-                      formGovernorates.includes(gov)
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background text-foreground border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {formGovernorates.includes(gov) && <Check size={12} className="inline ml-1" />}
-                    {gov}
-                  </button>
+              <div className="space-y-1 max-h-64 overflow-y-auto border border-border rounded-xl p-3">
+                {locations.map((gov) => (
+                  <div key={gov.name}>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleGovernorate(gov.name)}
+                        className={`flex-1 text-right px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                          formGovernorates.includes(gov.name)
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-border hover:border-primary/50'
+                        }`}
+                      >
+                        {formGovernorates.includes(gov.name) && <Check size={12} className="inline ml-1" />}
+                        {gov.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedGov(expandedGov === gov.name ? null : gov.name)}
+                        className="p-1.5 rounded-lg hover:bg-muted transition"
+                      >
+                        <ChevronDown size={14} className={`text-muted-foreground transition-transform ${expandedGov === gov.name ? 'rotate-180' : ''}`} />
+                      </button>
+                    </div>
+                    {expandedGov === gov.name && (
+                      <div className="pr-6 pt-1 pb-2">
+                        <p className="text-[10px] text-muted-foreground mb-1">الأقضية:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {gov.districts.map((d) => (
+                            <span key={d.name} className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                              {d.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

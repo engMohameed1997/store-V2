@@ -65,7 +65,7 @@ export function ChatWidget() {
       <button
         onClick={() => setIsOpen(true)}
         aria-label="افتح المساعد الذكي"
-        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
+        className="fixed bottom-36 left-4 md:bottom-24 md:left-6 z-50 flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
       >
         <Sparkles size={22} className="shrink-0" />
         <span className="text-sm font-medium hidden sm:inline">مساعد ذكي</span>
@@ -74,7 +74,7 @@ export function ChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex flex-col w-[calc(100vw-2rem)] sm:w-96 h-[60vh] max-h-[600px] bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
+    <div className="fixed bottom-36 left-4 md:bottom-24 md:left-6 z-50 flex flex-col w-[calc(100vw-2rem)] sm:w-96 h-[60vh] max-h-[600px] bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground">
         <div className="flex items-center gap-2">
           <Bot size={20} />

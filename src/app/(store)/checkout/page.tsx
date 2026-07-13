@@ -108,18 +108,19 @@ export default function CheckoutPage() {
     setSummaryLoading(true);
     const res = await postJson<CheckoutSummary>('/api/v1/checkout/summary', {
       couponCode: couponCode || undefined,
+      addressId: selectedAddress || undefined,
     });
     setSummaryLoading(false);
     if (res.success && res.data) {
       setSummary(res.data as CheckoutSummary);
     }
-  }, [isAuthenticated, couponCode]);
+  }, [isAuthenticated, couponCode, selectedAddress]);
 
   useEffect(() => {
     if (isAuthenticated && !loading) {
       fetchSummary();
     }
-  }, [isAuthenticated, loading, fetchSummary]);
+  }, [isAuthenticated, loading, fetchSummary, selectedAddress]);
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();

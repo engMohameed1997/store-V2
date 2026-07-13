@@ -3,9 +3,18 @@ import { apiSuccess } from "@/lib/api/response";
 import { db } from "@/lib/db";
 
 export const GET = adminRoute(async () => {
-  // Aggregate pageviews by path
+  // Aggregate pageviews by path — exclude admin pages and homepage
   const topPages = await db.pageView.groupBy({
     by: ["path"],
+    where: {
+      path: {
+        not: { startsWith: "/mx-panel" },
+      },
+      AND: [
+        { path: { not: "/" } },
+        { path: { not: "" } },
+      ],
+    },
     _count: {
       path: true,
     },
