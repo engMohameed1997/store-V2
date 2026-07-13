@@ -11,6 +11,8 @@ import type { CategoryWithChildren } from '@/lib/types/store';
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
@@ -71,6 +73,34 @@ export default function Header() {
     }
   }, [searchQuery]);
 
+  // Fetch suggestions
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/v1/search/suggestions?q=${encodeURIComponent(searchQuery.trim())}`);
+        const data = await res.json();
+        if (data.success) setSuggestions(data.data as string[]);
+      } catch {/* ignore */}
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch initial curated keywords on focus
+  const handleSearchFocus = useCallback(async () => {
+    setShowSuggestions(true);
+    if (suggestions.length === 0 && !searchQuery) {
+      try {
+        const res = await fetch('/api/v1/search/suggestions');
+        const data = await res.json();
+        if (data.success) setSuggestions(data.data as string[]);
+      } catch {/* ignore */}
+    }
+  }, [suggestions.length, searchQuery]);
+
   return (
     <header className={`sticky top-0 z-50 transition-shadow duration-300 ${scrolled ? 'shadow-lg shadow-black/5' : ''}`}>
       {/* Main Bar */}
@@ -83,11 +113,12 @@ export default function Header() {
 
           {/* Search Bar - Desktop */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl">
-            <div className="relative w-full group">
+            <div className="relative w-full group" onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}>
               <input
                 type="text"
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
+                onFocus={handleSearchFocus}
                 placeholder="ابحث عن منتجات، تصنيفات، أو علامات تجارية..."
                 className="w-full h-10 pr-4 pl-12 rounded-xl bg-white/10 backdrop-blur-sm text-white placeholder:text-white/50 border border-white/20 focus:border-[var(--accent)] focus:bg-white/15 focus:ring-2 focus:ring-[var(--accent)]/20 outline-none transition-all duration-300"
               />
@@ -98,6 +129,21 @@ export default function Header() {
               >
                 <Search size={16} />
               </button>
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full mt-1 left-0 right-0 bg-card rounded-xl shadow-2xl border border-border py-2 z-50 max-h-64 overflow-y-auto">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { setSearchQuery(s); window.location.href = `/search?q=${encodeURIComponent(s)}`; }}
+                      className="w-full text-right px-4 py-2 text-sm text-foreground hover:bg-primary/5 transition flex items-center gap-2"
+                    >
+                      <Search size={14} className="text-muted-foreground shrink-0" />
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </form>
 
