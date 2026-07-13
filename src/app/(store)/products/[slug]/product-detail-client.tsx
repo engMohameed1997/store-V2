@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ShoppingCart, Heart, Star, Minus, Plus, ChevronLeft, ChevronRight, Share2, Shield, Truck, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { postJson } from '@/lib/client/api';
+import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { formatPrice } from '@/lib/utils/format';
@@ -45,6 +45,9 @@ interface ProductDetail {
   reviewCount: number;
   soldCount: number;
   isFeatured: boolean;
+  warrantyDuration: number | null;
+  warrantyUnit: string | null;
+  warrantyCoverage: string | null;
   images: ProductImage[];
   specs: ProductSpec[];
   variants: ProductVariant[];
@@ -54,6 +57,7 @@ interface ProductDetail {
 
 export default function ProductDetailClient({ product }: { product: ProductDetail }) {
   const { isAuthenticated } = useAuth();
+  const { cart, isInWishlist, addToCart, toggleWishlist } = useCartWishlist();
   const router = useRouter();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -88,37 +92,37 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
     : price;
   const currentStock = activeVariant ? activeVariant.stock : product.stock;
 
+  const inWishlist = isInWishlist(product.id);
+  const inCart = cart?.items?.some(item =>
+    item.product.id === product.id &&
+    (selectedVariant ? item.variant?.id === selectedVariant : !item.variant)
+  ) ?? false;
+
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
-    setAddingToCart(true);
-    const body: Record<string, unknown> = {
-      productId: product.id,
-      quantity,
-    };
-    if (selectedVariant) body.variantId = selectedVariant;
-    const res = await postJson('/api/v1/cart', body);
-    setAddingToCart(false);
-    if (res.success) {
-      toast.success('تمت الإضافة إلى السلة');
-    } else {
-      toast.error(!res.success ? res.error.message : 'حدث خطأ');
+    if (inCart) {
+      router.push('/cart');
+      return;
     }
+    setAddingToCart(true);
+    const success = await addToCart(product.id, quantity, selectedVariant || undefined);
+    setAddingToCart(false);
+    if (!success && !isAuthenticated) return;
   };
 
-  const handleAddToWishlist = async () => {
+  const handleWishlistClick = async () => {
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
-    const res = await postJson('/api/v1/wishlist', { productId: product.id });
-    if (res.success) {
-      toast.success('تمت إضافته إلى المفضلة');
-    } else {
-      toast.error('حدث خطأ');
+    if (inWishlist) {
+      toast.info('هذا المنتج مضاف مسبقاً إلى المفضلة');
+      return;
     }
+    await toggleWishlist(product.id);
   };
 
   return (
@@ -297,17 +301,25 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
             <button
               onClick={handleAddToCart}
               disabled={currentStock === 0 || addingToCart}
-              className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex-1 h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                inCart
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20'
+              }`}
             >
               <ShoppingCart size={18} />
-              {addingToCart ? 'جاري الإضافة...' : currentStock === 0 ? 'غير متوفر' : 'أضف إلى السلة'}
+              {addingToCart ? 'جاري الإضافة...' : currentStock === 0 ? 'غير متوفر' : inCart ? 'إكمال الشراء' : 'أضف إلى السلة'}
             </button>
             <button
-              onClick={handleAddToWishlist}
-              className="w-12 h-12 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-500 dark:hover:bg-red-900/10 transition-all"
-              title="إضافة للمفضلة"
+              onClick={handleWishlistClick}
+              className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-all ${
+                inWishlist
+                  ? 'bg-red-50 border-red-200 text-red-500 dark:bg-red-900/10 dark:border-red-800'
+                  : 'border-border bg-card hover:bg-red-50 hover:border-red-200 hover:text-red-500 dark:hover:bg-red-900/10'
+              }`}
+              title={inWishlist ? 'مضاف للمفضلة' : 'إضافة للمفضلة'}
             >
-              <Heart size={20} />
+              <Heart size={20} className={inWishlist ? 'fill-red-500' : ''} />
             </button>
             <button
               className="w-12 h-12 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-muted transition"
@@ -344,6 +356,30 @@ export default function ProductDetailClient({ product }: { product: ProductDetai
                     <span className="text-foreground font-medium">{spec.value}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Warranty */}
+          {product.warrantyDuration && (
+            <div className="mt-6 bg-card rounded-xl border border-border p-4">
+              <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                <Shield size={18} className="text-emerald-500" />
+                الضمان
+              </h3>
+              <div className="divide-y divide-border">
+                <div className="flex justify-between py-2.5 text-sm">
+                  <span className="text-muted-foreground">مدة الضمان</span>
+                  <span className="text-foreground font-medium">
+                    {product.warrantyDuration} {product.warrantyUnit === 'MONTHS' ? 'شهر' : product.warrantyUnit === 'DAYS' ? 'يوم' : 'سنة'}
+                  </span>
+                </div>
+                {product.warrantyCoverage && (
+                  <div className="flex justify-between py-2.5 text-sm">
+                    <span className="text-muted-foreground">نطاق التغطية</span>
+                    <span className="text-foreground font-medium">{product.warrantyCoverage}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
