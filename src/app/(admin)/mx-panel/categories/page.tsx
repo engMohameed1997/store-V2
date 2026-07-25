@@ -7,7 +7,6 @@ import {
   Loader2,
   AlertCircle,
   Pencil,
-  Trash2,
   X,
   Check,
   ArrowUp,
@@ -152,24 +151,6 @@ export default function CategoriesPage() {
     });
     setEditingId(category.id);
     setShowForm(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!client || actionId) return;
-    if (!confirm('هل أنت متأكد من حذف هذا الصنف؟')) return;
-    setActionId(id);
-    try {
-      const result = await client.categories.delete(id);
-      if (result.success) {
-        setCategories((prev) => prev.filter((c) => c.id !== id));
-      } else if (!result.success) {
-        alert(result.error.message);
-      }
-    } catch {
-      alert('فشل في حذف الصنف');
-    } finally {
-      setActionId(null);
-    }
   };
 
   const handleMove = async (category: AdminCategory, direction: 'up' | 'down') => {
@@ -389,14 +370,6 @@ export default function CategoriesPage() {
                           title="تعديل"
                         >
                           <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(cat.id)}
-                          disabled={actionId === cat.id}
-                          className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition disabled:opacity-50"
-                          title="حذف"
-                        >
-                          {actionId === cat.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                         </button>
                       </div>
                     </td>

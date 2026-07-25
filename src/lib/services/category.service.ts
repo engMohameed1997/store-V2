@@ -109,24 +109,4 @@ export class CategoryService {
       include: CATEGORY_INCLUDE,
     });
   }
-
-  static async delete(id: string) {
-    const category = await db.category.findUnique({
-      where: { id, deletedAt: null },
-      include: { children: { where: { deletedAt: null } }, products: { where: { deletedAt: null }, take: 1 } },
-    });
-
-    if (!category) throw Errors.notFound("Category");
-    if (category.children.length > 0) {
-      throw Errors.badRequest("Cannot delete category with subcategories");
-    }
-    if (category.products.length > 0) {
-      throw Errors.badRequest("Cannot delete category with products");
-    }
-
-    await db.category.update({
-      where: { id },
-      data: { deletedAt: new Date(), isActive: false },
-    });
-  }
 }

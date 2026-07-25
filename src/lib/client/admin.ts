@@ -417,9 +417,6 @@ export function createAdminClient() {
       update(id: string, input: UpdateCategoryInput) {
         return putJson<AdminCategory>(`${ADMIN_BASE}/categories/${encodeURIComponent(id)}`, input, opts);
       },
-      delete(id: string) {
-        return deleteJson(`${ADMIN_BASE}/categories/${encodeURIComponent(id)}`, opts);
-      },
     },
 
     // ── Brands ────────────────────────────────────────────────

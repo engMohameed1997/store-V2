@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { warehouseRoute } from "@/lib/api/route-handler";
-import { apiSuccess, apiNoContent } from "@/lib/api/response";
+import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { updateCategorySchema } from "@/lib/validators/category";
 import { CategoryService } from "@/lib/services/category.service";
@@ -18,8 +18,3 @@ export const PUT = warehouseRoute(async (request: NextRequest, context) => {
   return apiSuccess(category);
 });
 
-export const DELETE = warehouseRoute(async (_request: NextRequest, context) => {
-  const { id } = await context.params;
-  await CategoryService.delete(id);
-  return apiNoContent();
-});
