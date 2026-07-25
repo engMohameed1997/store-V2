@@ -8,7 +8,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
 import type { CategoryWithChildren } from '@/lib/types/store';
 
-export default function Header({ categories }: { categories: CategoryWithChildren[] }) {
+export default function Header({ categories = [] }: { categories?: CategoryWithChildren[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
