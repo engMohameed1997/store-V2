@@ -76,20 +76,4 @@ export class BrandService {
     return db.brand.update({ where: { id }, data: updateData });
   }
 
-  static async delete(id: string) {
-    const brand = await db.brand.findUnique({
-      where: { id, deletedAt: null },
-      include: { products: { where: { deletedAt: null }, take: 1 } },
-    });
-
-    if (!brand) throw Errors.notFound("Brand");
-    if (brand.products.length > 0) {
-      throw Errors.badRequest("Cannot delete brand with products");
-    }
-
-    await db.brand.update({
-      where: { id },
-      data: { deletedAt: new Date(), isActive: false },
-    });
-  }
 }

@@ -7,7 +7,6 @@ import {
   Loader2,
   AlertCircle,
   Pencil,
-  Trash2,
   X,
   Check,
   Upload,
@@ -26,7 +25,6 @@ export default function BrandsPage() {
   const [formData, setFormData] = useState({ name: '', nameAr: '', logo: '', description: '' });
   const [submitting, setSubmitting] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [actionId, setActionId] = useState<string | null>(null);
 
   const uploadPathPattern = /^(\/uploads\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)|\/minio\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp))$/i;
 
@@ -127,24 +125,6 @@ export default function BrandsPage() {
     });
     setEditingId(brand.id);
     setShowForm(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!client || actionId) return;
-    if (!confirm('هل أنت متأكد من حذف هذا البراند؟')) return;
-    setActionId(id);
-    try {
-      const result = await client.brands.delete(id);
-      if (result.success) {
-        setBrands((prev) => prev.filter((b) => b.id !== id));
-      } else if (!result.success) {
-        alert(result.error.message);
-      }
-    } catch {
-      alert('فشل في حذف البراند');
-    } finally {
-      setActionId(null);
-    }
   };
 
   return (
@@ -305,14 +285,6 @@ export default function BrandsPage() {
                           title="تعديل"
                         >
                           <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(brand.id)}
-                          disabled={actionId === brand.id}
-                          className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition disabled:opacity-50"
-                          title="حذف"
-                        >
-                          {actionId === brand.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                         </button>
                       </div>
                     </td>

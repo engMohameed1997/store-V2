@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { warehouseRoute } from "@/lib/api/route-handler";
-import { apiSuccess, apiNoContent } from "@/lib/api/response";
+import { apiSuccess } from "@/lib/api/response";
 import { validateBody } from "@/lib/api/validate";
 import { BrandService } from "@/lib/services/brand.service";
 import { z } from "zod";
@@ -18,10 +18,4 @@ export const PUT = warehouseRoute(async (request: NextRequest, context) => {
   const input = await validateBody(request, updateBrandSchema);
   const brand = await BrandService.update(id, input);
   return apiSuccess(brand);
-});
-
-export const DELETE = warehouseRoute(async (_request: NextRequest, context) => {
-  const { id } = await context.params;
-  await BrandService.delete(id);
-  return apiNoContent();
 });

@@ -430,9 +430,6 @@ export function createAdminClient() {
       update(id: string, input: UpdateBrandInput) {
         return putJson<AdminBrand>(`${ADMIN_BASE}/brands/${encodeURIComponent(id)}`, input, opts);
       },
-      delete(id: string) {
-        return deleteJson(`${ADMIN_BASE}/brands/${encodeURIComponent(id)}`, opts);
-      },
     },
 
     // ── Coupons ───────────────────────────────────────────────
