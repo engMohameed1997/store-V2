@@ -35,6 +35,14 @@ export class BrandService {
       .replace(/^-|-$/g, "");
     if (!slug) slug = `brand-${Date.now().toString(36)}`;
 
+    const existing = await db.brand.findUnique({ where: { slug } });
+    if (existing && existing.deletedAt) {
+      await db.brand.update({
+        where: { id: existing.id },
+        data: { slug: `${slug}-deleted-${Date.now().toString(36)}` },
+      });
+    }
+
     const sanitized = {
       ...data,
       name: sanitizeString(data.name),
@@ -70,6 +78,15 @@ export class BrandService {
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "");
       if (!slug) slug = `brand-${Date.now().toString(36)}`;
+
+      const slugOwner = await db.brand.findUnique({ where: { slug } });
+      if (slugOwner && slugOwner.id !== id && slugOwner.deletedAt) {
+        await db.brand.update({
+          where: { id: slugOwner.id },
+          data: { slug: `${slug}-deleted-${Date.now().toString(36)}` },
+        });
+      }
+
       updateData.slug = slug;
     }
 
