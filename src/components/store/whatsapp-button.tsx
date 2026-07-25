@@ -2,7 +2,7 @@
 
 import { MessageCircle } from 'lucide-react';
 
-export function WhatsAppButton({ contact }: { contact: Record<string, string> }) {
+export function WhatsAppButton({ contact = {} }: { contact?: Record<string, string> }) {
   const phone = contact.socialWhatsapp || '';
   const greeting = contact.whatsappGreeting || '';
 

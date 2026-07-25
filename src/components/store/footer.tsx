@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Phone, MapPin } from 'lucide-react';
 import type { CategoryWithChildren } from '@/lib/types/store';
 
-export default function Footer({ categories, contact }: { categories: CategoryWithChildren[]; contact: Record<string, string> }) {
+export default function Footer({ categories = [], contact = {} }: { categories?: CategoryWithChildren[]; contact?: Record<string, string> }) {
   const social = contact;
 
   const socialLinks = [
