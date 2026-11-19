@@ -9,7 +9,7 @@ Next.js 16 (App Router) • React 19 • Prisma 7 + PostgreSQL 16 • Tailwind 4
 
 ## المجلدات
 - `src/app/(admin)/mx-panel/` — لوحة الإدارة (21 صفحة)
-- `src/app/(auth)/` — login, register, verify-phone, reset-password
+- `src/app/(auth)/` — login (Google للزبائن، كلمة مرور للإدارة فقط)، register (Google)
 - `src/app/(store)/` — المتجر (products, cart, checkout, account, wishlist, search)
 - `src/app/api/v1/` — REST API (81 endpoint: auth, mx-panel, products, orders, user, categories, cart, chat, uploads, etc.)
 - `src/components/` — admin/ • store/ • providers/ • ui/ (shadcn)

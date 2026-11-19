@@ -4,7 +4,7 @@
  * all fall back to "/"), and auth pages are skipped to avoid loops.
  */
 
-const AUTH_PAGES = ["/login", "/register", "/forgot-password", "/reset-password"];
+const AUTH_PAGES = ["/login", "/register"];
 const BASE = "http://same-site.invalid";
 
 export function safeNext(raw: string | null | undefined): string {

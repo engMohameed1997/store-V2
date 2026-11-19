@@ -2,12 +2,11 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { MSG } from '@/lib/messages';
-import { safeNext, withNext } from '@/lib/utils/safe-next';
+import { safeNext } from '@/lib/utils/safe-next';
 import { GoogleSignInButton, GOOGLE_LOGIN_ERRORS } from '@/components/store/google-sign-in';
 
 function LoginForm() {
@@ -20,6 +19,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [identifierInput, setIdentifierInput] = useState('');
   const { login, isAuthenticated, isLoading } = useAuth();
+  // Customers use Google only; the password form is for staff (admin panel).
+  const isStaffLogin = safeNext(next).startsWith('/mx-panel');
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -73,10 +74,12 @@ function LoginForm() {
         {/* Header */}
         <div className="flex flex-col space-y-2 text-center mb-8">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            تسجيل الدخول
+            {isStaffLogin ? 'دخول الإدارة' : 'تسجيل الدخول'}
           </h1>
           <p className="text-sm text-muted-foreground">
-            سجّل الدخول بحساب Google أو ببريدك الإلكتروني
+            {isStaffLogin
+              ? 'أدخل البريد الإلكتروني وكلمة المرور لحساب الإدارة'
+              : 'استخدم حساب Google للمتابعة، وإذا كانت أول مرة يُنشأ حسابك تلقائياً'}
           </p>
         </div>
 
@@ -87,88 +90,77 @@ function LoginForm() {
           </div>
         )}
 
-        <GoogleSignInButton next={next} />
+        {!isStaffLogin && <GoogleSignInButton next={next} />}
 
-        <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
-          {/* Honeypot */}
-          <div className="absolute opacity-0 h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
-            <label htmlFor="website">Website</label>
-            <input ref={honeypotRef} type="text" id="website" name="website" tabIndex={-1} autoComplete="off" />
-          </div>
-
-          {/* Identifier Input */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              البريد الإلكتروني
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
-                <Mail className="h-4 w-4" />
-              </div>
-              <input
-                type="email"
-                name="identifier"
-                placeholder="example@gmail.com"
-                required
-                autoComplete="username"
-                value={identifierInput}
-                onChange={(e) => setIdentifierInput(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-                dir="ltr"
-              />
+        {isStaffLogin && (
+          <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
+            {/* Honeypot */}
+            <div className="absolute opacity-0 h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
+              <label htmlFor="website">Website</label>
+              <input ref={honeypotRef} type="text" id="website" name="website" tabIndex={-1} autoComplete="off" />
             </div>
-          </div>
 
-          {/* Password Input */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            {/* Identifier Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                البريد الإلكتروني
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
+                  <Mail className="h-4 w-4" />
+                </div>
+                <input
+                  type="email"
+                  name="identifier"
+                  placeholder="example@gmail.com"
+                  required
+                  autoComplete="username"
+                  value={identifierInput}
+                  onChange={(e) => setIdentifierInput(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+
+            {/* Password Input */}
+            <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                 كلمة المرور
               </label>
-              <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline underline-offset-4">
-                نسيت كلمة المرور؟
-              </Link>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
-                <Lock className="h-4 w-4" />
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
+                  <Lock className="h-4 w-4" />
+                </div>
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  name="password"
+                  required
+                  autoComplete="current-password"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              <input
-                type={showPass ? 'text' : 'password'}
-                name="password"
-                required
-                autoComplete="current-password"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-                dir="ltr"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
             </div>
-          </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full mt-2"
-          >
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
-          </button>
-        </form>
-
-        {/* Footer */}
-        <div className="mt-6 text-center text-sm">
-          <span className="text-muted-foreground">ليس لديك حساب؟ </span>
-          <Link href={withNext('/register', next)} className="font-medium text-primary hover:underline underline-offset-4">
-            إنشاء حساب جديد
-          </Link>
-        </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full mt-2"
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

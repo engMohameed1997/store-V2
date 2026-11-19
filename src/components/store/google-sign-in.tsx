@@ -15,7 +15,7 @@ export const GOOGLE_LOGIN_ERRORS: Record<string, string> = {
   google_failed: 'تعذّر تسجيل الدخول بواسطة Google. حاول مرة أخرى.',
   google_unavailable: 'تسجيل الدخول بواسطة Google غير متاح حالياً.',
   google_blocked: 'هذا الحساب موقوف. تواصل مع الدعم.',
-  google_staff: 'حسابات الإدارة تسجّل الدخول بالبريد الإلكتروني وكلمة المرور.',
+  google_staff: 'حسابات الإدارة تسجّل الدخول من لوحة التحكم بالبريد الإلكتروني وكلمة المرور.',
 };
 
 function GoogleLogo() {
@@ -30,32 +30,28 @@ function GoogleLogo() {
 }
 
 /**
- * "Continue with Google" button + "or" divider. A full-page navigation (not a
- * client-side Link) because it leaves the site for Google's account chooser.
- * Renders nothing when Google sign-in isn't configured on the server.
+ * "Continue with Google" button — the only way customers sign in or sign up.
+ * A full-page navigation (not a client-side Link) because it leaves the site
+ * for Google's account chooser.
  */
 export function GoogleSignInButton({ next }: { next: string | null }) {
   const { google } = useContext(AuthOptionsContext);
-  if (!google) return null;
+
+  if (!google) {
+    return (
+      <p className="rounded-md border border-border bg-muted/50 p-3 text-center text-sm text-muted-foreground">
+        تسجيل الدخول غير متاح حالياً. حاول لاحقاً.
+      </p>
+    );
+  }
 
   return (
-    <>
-      <a
-        href={withNext('/api/v1/auth/google', next)}
-        className="inline-flex items-center justify-center gap-3 rounded-md border border-input bg-background h-11 px-4 w-full text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      >
-        <GoogleLogo />
-        المتابعة باستخدام Google
-      </a>
-
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-          <span className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-card px-3 text-muted-foreground">أو بالبريد الإلكتروني</span>
-        </div>
-      </div>
-    </>
+    <a
+      href={withNext('/api/v1/auth/google', next)}
+      className="inline-flex items-center justify-center gap-3 rounded-md border border-input bg-background h-12 px-4 w-full text-sm font-medium text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      <GoogleLogo />
+      المتابعة باستخدام Google
+    </a>
   );
 }

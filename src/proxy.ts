@@ -106,9 +106,6 @@ function handleCors(request: NextRequest, response: NextResponse): NextResponse 
   return response;
 }
 
-// Auth pages that require specific conditions (handled individually below)
-// reset-password: guest only
-
 function isAuthenticated(request: NextRequest): boolean {
   return !!request.cookies.get("accessToken")?.value;
 }
@@ -116,11 +113,6 @@ function isAuthenticated(request: NextRequest): boolean {
 function handleAuthRoutes(request: NextRequest): NextResponse | null {
   const { pathname, search } = request.nextUrl;
   const hasSession = isAuthenticated(request);
-
-  // Conditional pages: reset-password - logged in users don't need it
-  if (pathname === "/reset-password" && hasSession) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
 
   // Admin panel: requires authentication (role check is done client-side via AdminGuard)
   if (pathname.startsWith("/mx-panel") && !hasSession) {

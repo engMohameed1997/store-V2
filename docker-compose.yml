@@ -78,14 +78,7 @@ services:
       # Cookies get the Secure flag (set "true" when the site is served over HTTPS)
       HTTPS_ENABLED: ${HTTPS_ENABLED:-false}
 
-      # Email (SMTP) — sign-up & password-reset codes
-      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SMTP_PORT: ${SMTP_PORT:-465}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      MAIL_FROM: ${MAIL_FROM:-}
-
-      # "Continue with Google" (hidden until both are set)
+      # "Continue with Google" — the only customer sign-in (both required)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
