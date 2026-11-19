@@ -30,7 +30,13 @@ query -P pager=off -c "SELECT id, email, phone, role, status,
     failed_login_attempts AS failed, locked_until
   FROM users WHERE role <> 'CUSTOMER' ORDER BY created_at;"
 
-read -rp "Account id to fix: " USER_ID
+STAFF_IDS=$(query -tA -c "SELECT id FROM users WHERE role <> 'CUSTOMER';")
+if [[ -n $STAFF_IDS && $STAFF_IDS != *$'\n'* ]]; then
+    read -rp "Account id to fix [Enter = $STAFF_IDS]: " USER_ID
+    USER_ID=${USER_ID:-$STAFF_IDS}
+else
+    read -rp "Account id to fix (first column above): " USER_ID
+fi
 [[ $USER_ID =~ ^[A-Za-z0-9_-]{1,64}$ ]] || die "Invalid id."
 ROLE=$(query -tA -c "SELECT role FROM users WHERE id = '$USER_ID';")
 [[ -n $ROLE ]] || die "No account with id $USER_ID."
