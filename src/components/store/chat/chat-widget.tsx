@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
+import { AuthLink } from '@/components/store/auth-link';
 import { Bot, X, Sparkles, RotateCcw, LogIn } from 'lucide-react';
 import { useStoreChat } from '@/hooks/use-store-chat';
 import { ChatMessages } from './chat-messages';
@@ -116,21 +116,21 @@ export function ChatWidget() {
             مرحباً! أنا المساعد الذكي للمتجر. أساعدك تلقى المنتجات وتتابع طلباتك وتعرف تفاصيل التوصيل.
           </p>
           <p className="text-sm font-medium">سجّل دخولك حتى تستخدم المساعد</p>
-          <Link
-            href="/login"
+          <AuthLink
+            page="/login"
             onClick={() => setIsOpen(false)}
             className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-full transition"
           >
             <LogIn size={16} />
             تسجيل الدخول
-          </Link>
-          <Link
-            href="/register"
+          </AuthLink>
+          <AuthLink
+            page="/register"
             onClick={() => setIsOpen(false)}
             className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition"
           >
             ما عندك حساب؟ أنشئ حساب جديد
-          </Link>
+          </AuthLink>
         </div>
       ) : (
         <>

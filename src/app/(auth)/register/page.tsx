@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Lock, Eye, EyeOff, User, Phone, UserPlus, Loader2, ShieldCheck, ArrowRight, KeyRound, Check, X, Store } from 'lucide-react';
+import { Lock, Eye, EyeOff, User, Mail, UserPlus, Loader2, ShieldCheck, ArrowRight, KeyRound, Check, X, Store } from 'lucide-react';
 import { authClient } from '@/lib/client/auth';
+import { apiErrorMessage } from '@/lib/client/api';
 import { useAuth } from '@/components/providers/auth-provider';
 import { MSG } from '@/lib/messages';
-import { getFirebaseAuth, isFirebaseClientConfigured, normalizePhoneForFirebase } from '@/lib/firebase/client';
-import { getFirebaseErrorMessage } from '@/lib/firebase/errors';
-import { RecaptchaVerifier, signInWithPhoneNumber, signOut, type ConfirmationResult } from 'firebase/auth';
+import { safeNext, withNext } from '@/lib/utils/safe-next';
 
 type Step = 'form' | 'otp';
 
@@ -34,11 +33,25 @@ const inputClassNoIcon =
   'w-full px-3 py-3 border border-border rounded-xl bg-background text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm';
 
 export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
+  );
+}
+
+function RegisterContent() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step>('form');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -46,18 +59,18 @@ export default function RegisterPage() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [cooldown, setCooldown] = useState(0);
   const [resending, setResending] = useState(false);
-  const [preAuthToken, setPreAuthToken] = useState<string | null>(null);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [registrationToken, setRegistrationToken] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next');
   const { isAuthenticated, isLoading, setAuth } = useAuth();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.push('/');
+      router.replace(safeNext(next));
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, next]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -65,53 +78,14 @@ export default function RegisterPage() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  useEffect(() => {
-    return () => {
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
-      }
-    };
-  }, []);
-
-  const setupRecaptcha = useCallback(async () => {
-    if (recaptchaVerifierRef.current) return recaptchaVerifierRef.current;
-    const auth = getFirebaseAuth();
-    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-    });
-    await verifier.render();
-    recaptchaVerifierRef.current = verifier;
-    return verifier;
-  }, []);
-
-  const sendOtp = async (phoneNumber: string): Promise<ConfirmationResult> => {
-    const auth = getFirebaseAuth();
-    const verifier = await setupRecaptcha();
-    const normalized = normalizePhoneForFirebase(phoneNumber);
-    try {
-      const result = await signInWithPhoneNumber(auth, normalized, verifier);
-      setConfirmationResult(result);
-      setCooldown(RESEND_COOLDOWN);
-      return result;
-    } catch (err) {
-      if (recaptchaVerifierRef.current) {
-        try { recaptchaVerifierRef.current.clear(); } catch { /* ignore */ }
-        recaptchaVerifierRef.current = null;
-      }
-      const friendlyMsg = getFirebaseErrorMessage(err);
-      throw new Error(friendlyMsg, { cause: err });
-    }
+  const resetOtp = () => {
+    setOtp(['', '', '', '', '', '']);
+    inputRefs.current[0]?.focus();
   };
 
-  const handleSendOtp = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSendCode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
-
-    if (!isFirebaseClientConfigured()) {
-      setError('تعذّر إرسال رمز التحقق. حاول مرة أخرى لاحقاً.');
-      return;
-    }
 
     if (password !== confirmPassword) {
       setError('كلمتا المرور غير متطابقتين.');
@@ -126,49 +100,38 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const otpResult = await authClient.sendOtp(phone);
-      if (!otpResult.success) {
-        setError(otpResult.error?.message || 'تعذّر إرسال رمز التحقق. حاول لاحقاً.');
+      const result = await authClient.register({ email, password, confirmPassword, firstName, lastName });
+      if (!result.success) {
+        setError(apiErrorMessage(result.error, MSG.auth.registerFailed));
         return;
       }
-
-      const token = otpResult.data?.preAuthToken ?? null;
-      setPreAuthToken(token);
-
-      if (token) {
-        await sendOtp(phone);
-      }
-
+      setRegistrationToken(result.data.registrationToken);
+      setEmail(result.data.email);
+      setCooldown(RESEND_COOLDOWN);
       setStep('otp');
-      toast.success('تم إرسال رمز التحقق إلى هاتفك');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'تعذّر إرسال رمز التحقق. حاول لاحقاً.';
-      setError(msg);
-      if (recaptchaVerifierRef.current) {
-        try { recaptchaVerifierRef.current.clear(); } catch { /* ignore */ }
-        recaptchaVerifierRef.current = null;
-      }
+      toast.success('أرسلنا رمز التحقق إلى بريدك الإلكتروني');
+    } catch {
+      setError(MSG.common.networkError);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResendOtp = async () => {
-    if (resending || cooldown > 0) return;
+  const handleResendCode = async () => {
+    if (resending || cooldown > 0 || !registrationToken) return;
     setResending(true);
     setError('');
     try {
-      if (preAuthToken) {
-        if (recaptchaVerifierRef.current) {
-          recaptchaVerifierRef.current.clear();
-          recaptchaVerifierRef.current = null;
-        }
-        await sendOtp(phone);
+      const result = await authClient.resendCode(registrationToken);
+      if (!result.success) {
+        setError(apiErrorMessage(result.error, 'تعذّر إرسال رمز التحقق. حاول لاحقاً.'));
+        return;
       }
+      setCooldown(RESEND_COOLDOWN);
+      resetOtp();
       toast.success('تم إعادة إرسال رمز التحقق');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'تعذّر إرسال رمز التحقق. حاول لاحقاً.';
-      setError(msg);
+    } catch {
+      setError(MSG.common.networkError);
     } finally {
       setResending(false);
     }
@@ -205,56 +168,27 @@ export default function RegisterPage() {
       setError('أدخل الرمز المكوّن من 6 أرقام');
       return;
     }
+    if (!registrationToken) {
+      setError('انتهت الجلسة. أعد المحاولة.');
+      setStep('form');
+      return;
+    }
 
     setLoading(true);
     setError('');
     try {
-      if (!preAuthToken) {
-        setError('رمز التحقق غير صحيح.');
-        setOtp(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-        return;
-      }
-
-      if (!confirmationResult) {
-        setError('انتهت الجلسة. أعد المحاولة.');
-        setStep('form');
-        return;
-      }
-
-      const userCredential = await confirmationResult.confirm(fullCode);
-      const idToken = await userCredential.user.getIdToken();
-
-      const result = await authClient.registerByPhone({
-        phone: normalizePhoneForFirebase(phone),
-        password,
-        confirmPassword,
-        firstName,
-        lastName,
-        firebaseIdToken: idToken,
-        preAuthToken,
-      });
-
+      const result = await authClient.verifyEmail(registrationToken, fullCode);
       if (result.success && result.data?.user) {
         setAuth(result.data.user);
         toast.success('تم إنشاء الحساب بنجاح!');
-        router.push('/');
-      } else if (!result.success) {
-        setError(result.error.message || MSG.auth.registerFailed);
-        setOtp(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-        try { await signOut(getFirebaseAuth()); } catch { /* ignore */ }
+        router.replace(safeNext(next));
       } else {
-        setError(MSG.auth.registerFailed);
-        setOtp(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-        try { await signOut(getFirebaseAuth()); } catch { /* ignore */ }
+        setError(result.success ? MSG.auth.registerFailed : apiErrorMessage(result.error, MSG.auth.registerFailed));
+        resetOtp();
       }
-    } catch (err: unknown) {
-      setError(getFirebaseErrorMessage(err));
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
-      try { await signOut(getFirebaseAuth()); } catch { /* ignore */ }
+    } catch {
+      setError(MSG.common.networkError);
+      resetOtp();
     } finally {
       setLoading(false);
     }
@@ -264,11 +198,7 @@ export default function RegisterPage() {
     setStep('form');
     setOtp(['', '', '', '', '', '']);
     setError('');
-    setPreAuthToken(null);
-    if (recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current.clear();
-      recaptchaVerifierRef.current = null;
-    }
+    setRegistrationToken(null);
   };
 
   const missing = password ? getMissingRequirements(password) : [];
@@ -282,10 +212,10 @@ export default function RegisterPage() {
             <Store className="w-7 h-7 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
-            {step === 'form' ? 'إنشاء حساب' : 'تأكيد رقم الهاتف'}
+            {step === 'form' ? 'إنشاء حساب' : 'تأكيد البريد الإلكتروني'}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {step === 'form' ? 'انضم إلينا واستمتع بأفضل العروض' : 'أدخل الرمز المرسل إلى هاتفك'}
+            {step === 'form' ? 'انضم إلينا واستمتع بأفضل العروض' : 'أدخل الرمز المرسل إلى بريدك الإلكتروني'}
           </p>
         </div>
 
@@ -298,7 +228,7 @@ export default function RegisterPage() {
           )}
 
           {step === 'form' ? (
-            <form onSubmit={handleSendOtp} className="space-y-4">
+            <form onSubmit={handleSendCode} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">الاسم الأول</label>
@@ -330,19 +260,20 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">رقم الهاتف (عراقي)</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">البريد الإلكتروني</label>
                 <div className="relative">
                   <input
-                    type="tel"
-                    name="phone"
-                    placeholder="07XXXXXXXXX"
+                    type="email"
+                    name="email"
+                    placeholder="example@gmail.com"
                     required
                     dir="ltr"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className={inputClass}
                   />
-                  <Phone size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <Mail size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 </div>
               </div>
 
@@ -410,8 +341,6 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div id="recaptcha-container" className="absolute -top-96 -left-96 w-1 h-1 overflow-hidden" />
-
               <button
                 type="submit"
                 disabled={loading}
@@ -431,7 +360,10 @@ export default function RegisterPage() {
 
               <p className="text-center text-muted-foreground text-sm mb-6">
                 أدخل الرمز المكوّن من 6 أرقام المرسل إلى{' '}
-                <span className="font-semibold text-foreground" dir="ltr">{phone}</span>
+                <span className="font-semibold text-foreground" dir="ltr">{email}</span>
+              </p>
+              <p className="text-center text-muted-foreground text-xs -mt-4 mb-6">
+                لم تجد الرسالة؟ تحقق من مجلد البريد المزعج (Spam).
               </p>
 
               <div className="flex justify-center gap-2 sm:gap-3 mb-6" dir="ltr">
@@ -454,12 +386,10 @@ export default function RegisterPage() {
                 ))}
               </div>
 
-              <div id="recaptcha-container" className="flex justify-center min-h-[78px] mb-4" />
-
               <div className="text-center mb-6">
                 <button
                   type="button"
-                  onClick={handleResendOtp}
+                  onClick={handleResendCode}
                   disabled={resending || cooldown > 0}
                   className="text-sm text-muted-foreground hover:text-primary transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -494,7 +424,7 @@ export default function RegisterPage() {
           <div className="mt-6 pt-6 border-t border-border/50 text-center">
             <p className="text-sm text-muted-foreground">
               لديك حساب بالفعل؟{' '}
-              <Link href="/login" className="text-primary font-medium hover:underline transition">
+              <Link href={withNext('/login', next)} className="text-primary font-medium hover:underline transition">
                 تسجيل الدخول
               </Link>
             </p>

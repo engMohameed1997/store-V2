@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, ShoppingCart, Heart, User, Menu, X, ChevronDown, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/components/providers/auth-provider';
+import { AuthLink } from '@/components/store/auth-link';
 import { useCartWishlist } from '@/components/providers/cart-wishlist-provider';
 import type { CategoryWithChildren } from '@/lib/types/store';
 
@@ -187,20 +188,20 @@ export default function Header({ categories = [] }: { categories?: CategoryWithC
                     </>
                   ) : (
                     <>
-                      <Link
-                        href="/login"
+                      <AuthLink
+                        page="/login"
                         onClick={() => setUserMenuOpen(false)}
                         className="block px-4 py-2.5 text-sm text-foreground hover:bg-primary/5 transition"
                       >
                         تسجيل الدخول
-                      </Link>
-                      <Link
-                        href="/register"
+                      </AuthLink>
+                      <AuthLink
+                        page="/register"
                         onClick={() => setUserMenuOpen(false)}
                         className="block px-4 py-2.5 text-sm text-foreground hover:bg-primary/5 transition"
                       >
                         إنشاء حساب
-                      </Link>
+                      </AuthLink>
                     </>
                   )}
                 </div>
@@ -366,20 +367,20 @@ export default function Header({ categories = [] }: { categories?: CategoryWithC
                 </>
               ) : (
                 <>
-                  <Link
-                    href="/login"
+                  <AuthLink
+                    page="/login"
                     onClick={() => setMenuOpen(false)}
                     className="block w-full text-center py-2.5 bg-primary text-white rounded-xl font-medium transition hover:bg-primary/90"
                   >
                     تسجيل الدخول
-                  </Link>
-                  <Link
-                    href="/register"
+                  </AuthLink>
+                  <AuthLink
+                    page="/register"
                     onClick={() => setMenuOpen(false)}
                     className="block w-full text-center py-2.5 border border-border text-foreground rounded-xl font-medium transition hover:bg-primary/5"
                   >
                     إنشاء حساب
-                  </Link>
+                  </AuthLink>
                 </>
               )}
             </div>

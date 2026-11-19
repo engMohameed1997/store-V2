@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { currentPath, withNext } from '@/lib/utils/safe-next';
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN', 'SALES', 'WAREHOUSE', 'CUSTOMER_SERVICE'];
 
@@ -15,7 +16,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     if (!isAuthenticated || !user) {
-      router.replace('/login');
+      router.replace(withNext('/login', currentPath()));
       return;
     }
 

@@ -1,3 +1,8 @@
+/** Customer-supplied text goes into an HTML-formatted message — escape it. */
+function esc(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 /**
  * TelegramService — sends notifications to a Telegram chat/group
  * via the Bot API. Reads bot token & chat ID from env vars.
@@ -50,8 +55,8 @@ export class TelegramService {
     const text = [
       `🛒 <b>طلب جديد #${order.orderNumber}</b>`,
       ``,
-      `👤 الزبون: ${order.customerName}`,
-      order.customerPhone ? `📱 الهاتف: <code>${order.customerPhone}</code>` : null,
+      `👤 الزبون: ${esc(order.customerName)}`,
+      order.customerPhone ? `📱 الهاتف: <code>${esc(order.customerPhone)}</code>` : null,
       `📦 عدد المنتجات: ${order.itemCount}`,
       `💰 المبلغ: ${Number(order.totalAmount).toLocaleString("ar-IQ")} د.ع`,
     ]
@@ -77,8 +82,8 @@ export class TelegramService {
     const text = [
       `🎫 <b>تذكرة دعم جديدة #${ticket.ticketNumber}</b>`,
       ``,
-      `📋 الموضوع: ${ticket.subject}`,
-      `👤 الزبون: ${ticket.customerName}`,
+      `📋 الموضوع: ${esc(ticket.subject)}`,
+      `👤 الزبون: ${esc(ticket.customerName)}`,
       `${priorityEmoji[ticket.priority] || "🟡"} الأولوية: ${ticket.priority}`,
     ].join("\n");
 
@@ -93,8 +98,8 @@ export class TelegramService {
     const text = [
       `💬 <b>رسالة جديدة في التذكرة #${data.ticketNumber}</b>`,
       ``,
-      `👤 ${data.customerName}`,
-      `📝 ${data.messagePreview.slice(0, 200)}`,
+      `👤 ${esc(data.customerName)}`,
+      `📝 ${esc(data.messagePreview.slice(0, 200))}`,
     ].join("\n");
 
     return this.sendMessage(text);

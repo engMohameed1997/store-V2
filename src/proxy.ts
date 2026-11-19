@@ -107,23 +107,15 @@ function handleCors(request: NextRequest, response: NextResponse): NextResponse 
 }
 
 // Auth pages that require specific conditions (handled individually below)
-// verify-phone: needs phone param | reset-password: guest only
+// reset-password: guest only
 
 function isAuthenticated(request: NextRequest): boolean {
   return !!request.cookies.get("accessToken")?.value;
 }
 
 function handleAuthRoutes(request: NextRequest): NextResponse | null {
-  const { pathname, searchParams } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   const hasSession = isAuthenticated(request);
-
-  // Conditional pages: verify-phone requires phone param or session
-  if (pathname === "/verify-phone") {
-    const hasPhone = !!searchParams.get("phone");
-    if (!hasPhone && !hasSession) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-  }
 
   // Conditional pages: reset-password - logged in users don't need it
   if (pathname === "/reset-password" && hasSession) {
@@ -132,7 +124,9 @@ function handleAuthRoutes(request: NextRequest): NextResponse | null {
 
   // Admin panel: requires authentication (role check is done client-side via AdminGuard)
   if (pathname.startsWith("/mx-panel") && !hasSession) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", `${pathname}${search}`);
+    return NextResponse.redirect(loginUrl);
   }
 
   return null;

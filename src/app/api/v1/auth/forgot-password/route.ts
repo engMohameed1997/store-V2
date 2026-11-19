@@ -7,6 +7,6 @@ import { AuthService } from "@/lib/services/auth.service";
 
 export const POST = publicRoute(async (request: NextRequest) => {
   const input = await validateBody(request, forgotPasswordSchema);
-  const result = await AuthService.forgotPassword(input.phone);
+  const result = await AuthService.forgotPassword(input.email);
   return apiSuccess(result);
 }, "strict");

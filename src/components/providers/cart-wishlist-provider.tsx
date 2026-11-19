@@ -13,6 +13,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { getJson, postJson, deleteJson, putJson } from "@/lib/client/api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { currentPath, withNext } from "@/lib/utils/safe-next";
 
 interface CartItem {
   id: string;
@@ -134,7 +135,7 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
   const addToCart = useCallback(
     async (productId: string, quantity = 1, variantId?: string) => {
       if (!isAuthenticated) {
-        router.push("/login");
+        router.push(withNext("/login", currentPath()));
         return false;
       }
 
@@ -196,7 +197,7 @@ export function CartWishlistProvider({ children }: { children: ReactNode }) {
   const toggleWishlist = useCallback(
     async (productId: string) => {
       if (!isAuthenticated) {
-        router.push("/login");
+        router.push(withNext("/login", currentPath()));
         return false;
       }
 

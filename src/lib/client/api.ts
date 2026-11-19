@@ -236,3 +236,15 @@ function isApiResponse<T>(value: unknown): value is ApiSuccessResponse<T> | ApiE
     (value as ApiSuccessResponse<T> | ApiErrorResponse).success !== undefined
   );
 }
+
+/** User-facing error text: the first field message for validation errors, else the server message. */
+export function apiErrorMessage(error: ApiErrorResponse["error"], fallback: string): string {
+  if (Array.isArray(error.details)) {
+    const first = error.details.find(
+      (d): d is { message: string } => typeof (d as { message?: unknown })?.message === "string"
+    );
+    if (first) return first.message;
+  }
+  if (["VALIDATION_ERROR", "NETWORK_ERROR", "UNKNOWN_RESPONSE"].includes(error.code)) return fallback;
+  return error.message || fallback;
+}

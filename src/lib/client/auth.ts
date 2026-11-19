@@ -9,19 +9,17 @@ export interface LoginPayload {
   deviceId?: string;
 }
 
-export interface RegisterByPhonePayload {
-  phone: string;
+export interface RegisterPayload {
+  email: string;
   password: string;
   confirmPassword: string;
   firstName: string;
   lastName: string;
-  firebaseIdToken: string;
-  preAuthToken: string;
 }
 
-export interface VerifyPhonePayload {
-  phone: string;
-  firebaseIdToken: string;
+export interface RegisterResponse {
+  registrationToken: string;
+  email: string;
 }
 
 export interface ResetPasswordPayload {
@@ -31,8 +29,8 @@ export interface ResetPasswordPayload {
 }
 
 export interface VerifyResetOtpPayload {
-  phone: string;
-  firebaseIdToken: string;
+  email: string;
+  code: string;
 }
 
 export interface VerifyResetOtpResponse {
@@ -54,29 +52,26 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
-export interface SendOtpResponse {
-  preAuthToken: string | null;
-}
 
 export const authClient = {
   login(payload: LoginPayload): Promise<ApiResult<LoginResponse>> {
     return postJson<LoginResponse>(`${AUTH_BASE}/login`, payload);
   },
 
-  sendOtp(phone: string): Promise<ApiResult<SendOtpResponse>> {
-    return postJson<SendOtpResponse>(`${AUTH_BASE}/send-otp`, { phone });
+  register(payload: RegisterPayload): Promise<ApiResult<RegisterResponse>> {
+    return postJson<RegisterResponse>(`${AUTH_BASE}/register`, payload);
   },
 
-  registerByPhone(payload: RegisterByPhonePayload): Promise<ApiResult<LoginResponse>> {
-    return postJson<LoginResponse>(`${AUTH_BASE}/register`, payload);
+  verifyEmail(registrationToken: string, code: string): Promise<ApiResult<LoginResponse>> {
+    return postJson<LoginResponse>(`${AUTH_BASE}/verify-email`, { registrationToken, code });
   },
 
-  verifyPhone(payload: VerifyPhonePayload): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/verify-phone`, payload);
+  resendCode(registrationToken: string): Promise<ApiResult> {
+    return postJson(`${AUTH_BASE}/resend-code`, { registrationToken });
   },
 
-  forgotPassword(phone: string): Promise<ApiResult> {
-    return postJson(`${AUTH_BASE}/forgot-password`, { phone });
+  forgotPassword(email: string): Promise<ApiResult> {
+    return postJson(`${AUTH_BASE}/forgot-password`, { email });
   },
 
   verifyResetOtp(payload: VerifyResetOtpPayload): Promise<ApiResult<VerifyResetOtpResponse>> {

@@ -1,14 +1,13 @@
 import { z } from "zod";
 
-const IRAQI_PHONE_REGEX = /^(\+964|00964|0)?(7[3-9]\d{8})$/;
-
-const iraqiPhone = z
+const email = z
   .string()
-  .regex(IRAQI_PHONE_REGEX, "رقم هاتف عراقي غير صالح (مثال: 07XXXXXXXXX)")
-  .transform((val) => {
-    const cleaned = val.replace(/^(\+964|00964|0)/, "");
-    return `+964${cleaned}`;
-  });
+  .trim()
+  .toLowerCase()
+  .max(254, "البريد الإلكتروني طويل جداً")
+  .email("البريد الإلكتروني غير صالح");
+
+const otpCode = z.string().regex(/^\d{6}$/, "أدخل الرمز المكوّن من 6 أرقام");
 
 const strongPassword = z
   .string()
@@ -25,21 +24,19 @@ const safeName = z
   .max(50, "الاسم طويل جداً")
   .regex(/^[\p{L}\s'-]+$/u, "أحرف غير صالحة في الاسم");
 
-export const registerByPhoneSchema = z.object({
-  phone: iraqiPhone,
+export const registerSchema = z.object({
+  email,
   password: strongPassword,
   confirmPassword: strongPassword,
   firstName: safeName,
   lastName: safeName,
-  firebaseIdToken: z.string().min(1, "رمز التحقق مطلوب"),
-  preAuthToken: z.string().min(1, "رمز التحقق المسبق مطلوب"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "كلمتا المرور غير متطابقتين.",
   path: ["confirmPassword"],
 });
 
 export const loginSchema = z.object({
-  identifier: z.string().min(1, "البريد أو الهاتف مطلوب"),
+  identifier: z.string().trim().min(1, "البريد الإلكتروني مطلوب").max(254),
   password: z.string().min(1, "كلمة المرور مطلوبة"),
   deviceName: z.string().max(100).optional(),
   deviceId: z.string().max(100).optional(),
@@ -49,18 +46,24 @@ export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, "الرمز مطلوب"),
 });
 
-export const verifyPhoneSchema = z.object({
-  phone: iraqiPhone,
-  firebaseIdToken: z.string().min(1, "رمز التحقق مطلوب"),
+const registrationToken = z.string().min(1, "انتهت صلاحية التسجيل. أعد إنشاء الحساب.").max(2048);
+
+export const verifyEmailSchema = z.object({
+  registrationToken,
+  code: otpCode,
+});
+
+export const resendCodeSchema = z.object({
+  registrationToken,
 });
 
 export const forgotPasswordSchema = z.object({
-  phone: iraqiPhone,
+  email,
 });
 
 export const verifyResetOtpSchema = z.object({
-  phone: iraqiPhone,
-  firebaseIdToken: z.string().min(1, "رمز التحقق مطلوب"),
+  email,
+  code: otpCode,
 });
 
 export const resetPasswordSchema = z.object({
@@ -77,10 +80,10 @@ export const changePasswordSchema = z.object({
   newPassword: strongPassword,
 });
 
-export type RegisterByPhoneInput = z.infer<typeof registerByPhoneSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
-export type VerifyPhoneInput = z.infer<typeof verifyPhoneSchema>;
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type VerifyResetOtpInput = z.infer<typeof verifyResetOtpSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

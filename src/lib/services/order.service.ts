@@ -376,15 +376,22 @@ export class OrderService {
 
     // Fire-and-forget Telegram notification
     try {
-      const user = await db.user.findUnique({
-        where: { id: userId },
-        select: { firstName: true, lastName: true, phone: true },
-      });
+      const [user, address] = await Promise.all([
+        db.user.findUnique({
+          where: { id: userId },
+          select: { firstName: true, lastName: true, phone: true },
+        }),
+        // Email-only accounts have no phone — use the delivery address phone
+        db.address.findUnique({
+          where: { id: input.shippingAddressId },
+          select: { phone: true },
+        }),
+      ]);
       TelegramService.notifyNewOrder({
         orderNumber: order.orderNumber,
         totalAmount: order.totalAmount,
         customerName: user ? `${user.firstName} ${user.lastName}` : "زبون",
-        customerPhone: user?.phone,
+        customerPhone: user?.phone || address?.phone,
         itemCount: order.items?.length || 0,
       }).catch(() => {});
     } catch {}

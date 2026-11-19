@@ -5,7 +5,7 @@ import { apiSuccess } from "@/lib/api/response";
 import { loginSchema } from "@/lib/validators/auth";
 import { AuthService } from "@/lib/services/auth.service";
 import { getClientIp, getUserAgent } from "@/lib/api/auth-guard";
-import { REFRESH_TOKEN_COOKIE_MAX_AGE, ACCESS_TOKEN_COOKIE_MAX_AGE } from "@/lib/api/jwt";
+import { setAuthCookies } from "@/lib/api/auth-cookies";
 
 export const POST = publicRoute(async (request: NextRequest) => {
   const input = await validateBody(request, loginSchema);
@@ -17,25 +17,7 @@ export const POST = publicRoute(async (request: NextRequest) => {
 
   const response = apiSuccess({ user: result.user }, "تم تسجيل الدخول بنجاح.");
 
-  // Access token: HttpOnly cookie — never exposed to JavaScript
-  const isSecure = process.env.NODE_ENV === "production" && process.env.HTTPS_ENABLED === "true";
-
-  response.cookies.set("accessToken", result.accessToken, {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: "strict",
-    path: "/",
-    maxAge: ACCESS_TOKEN_COOKIE_MAX_AGE,
-  });
-
-  // Refresh token: HttpOnly cookie — used to rotate access tokens
-  response.cookies.set("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: "strict",
-    path: "/api/v1/auth",
-    maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE,
-  });
+  setAuthCookies(response, result.accessToken, result.refreshToken);
 
   return response;
 }, "auth");

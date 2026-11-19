@@ -4,34 +4,26 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Phone, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { MSG } from '@/lib/messages';
+import { safeNext, withNext } from '@/lib/utils/safe-next';
 
 function LoginForm() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [needVerify, setNeedVerify] = useState(false);
   const [identifierInput, setIdentifierInput] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
+  const next = searchParams.get('next');
   const { login, isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    if (searchParams.get('registered') === 'true') {
-      toast.success('تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن');
-    }
-    if (searchParams.get('verified') === 'true') {
-      toast.success('تم تأكيد رقم الهاتف بنجاح! يمكنك تسجيل الدخول');
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.push('/');
+      router.replace(safeNext(next));
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, next]);
 
   const honeypotRef = useRef<HTMLInputElement>(null);
 
@@ -61,11 +53,8 @@ function LoginForm() {
 
       if (result.success) {
         toast.success(MSG.auth.loginSuccess);
-        router.push('/');
+        router.replace(safeNext(next));
       } else {
-        if (result.message?.includes('تأكيد') || result.message?.includes('verify')) {
-          setNeedVerify(true);
-        }
         setError(result.message || MSG.auth.invalidCredentials);
         setLoading(false);
       }
@@ -85,7 +74,7 @@ function LoginForm() {
             تسجيل الدخول
           </h1>
           <p className="text-sm text-muted-foreground">
-            أدخل رقم هاتفك للمتابعة
+            أدخل بريدك الإلكتروني للمتابعة
           </p>
         </div>
 
@@ -106,16 +95,16 @@ function LoginForm() {
           {/* Identifier Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              رقم الهاتف
+              البريد الإلكتروني
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
-                <Phone className="h-4 w-4" />
+                <Mail className="h-4 w-4" />
               </div>
               <input
-                type="text"
+                type="email"
                 name="identifier"
-                placeholder="07XXXXXXXXX"
+                placeholder="example@gmail.com"
                 required
                 autoComplete="username"
                 value={identifierInput}
@@ -169,19 +158,10 @@ function LoginForm() {
           </button>
         </form>
 
-        {/* Verify phone link */}
-        {needVerify && (
-          <div className="mt-4 text-center text-sm">
-            <Link href={`/verify-phone?phone=${encodeURIComponent(identifierInput)}`} className="font-medium text-primary hover:underline underline-offset-4">
-              تأكيد رقم الهاتف
-            </Link>
-          </div>
-        )}
-
         {/* Footer */}
         <div className="mt-6 text-center text-sm">
           <span className="text-muted-foreground">ليس لديك حساب؟ </span>
-          <Link href="/register" className="font-medium text-primary hover:underline underline-offset-4">
+          <Link href={withNext('/register', next)} className="font-medium text-primary hover:underline underline-offset-4">
             إنشاء حساب جديد
           </Link>
         </div>
