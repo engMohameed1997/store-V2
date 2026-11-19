@@ -2,64 +2,80 @@ import { tool, zodSchema } from "ai";
 import { z } from "zod";
 import type { AuthUser } from "@/lib/api/auth-guard";
 import {
-  getCachedProducts,
-  getCachedProductById,
   getCachedUserOrders,
   getCachedOrderById,
   getCachedUserProfile,
 } from "./cache";
+import { searchCatalog, getProductDetail, type ChatProductCard } from "./search";
 
 const AUTH_REQUIRED = { requiresAuth: true, message: "يرجى تسجيل الدخول أولاً للوصول إلى هذه المعلومات." };
 
-const SAFE_PRODUCT_FIELDS = [
-  "id", "name", "nameAr", "slug", "price", "compareAtPrice",
-  "stock", "avgRating", "reviewCount", "images", "category", "brand",
-];
-
-function safeProduct(p: Record<string, unknown>) {
-  return Object.fromEntries(
-    Object.entries(p).filter(([k]) => SAFE_PRODUCT_FIELDS.includes(k))
-  );
+/**
+ * The widget renders product cards (image, price, link) straight from the
+ * tool output, so the model gets the same products without image URLs or
+ * links — it has nothing to paste (or invent) into its reply.
+ */
+function forModel(p: ChatProductCard) {
+  return {
+    slug: p.slug,
+    name: p.name,
+    price: p.price,
+    compareAtPrice: p.compareAtPrice,
+    inStock: p.inStock,
+    brand: p.brand,
+    category: p.category,
+  };
 }
 
 export function buildTools(authUser: AuthUser | null) {
   return {
     searchProducts: tool({
-      description: "البحث عن منتجات في المتجر بالاسم أو الفئة",
+      description:
+        "البحث عن منتجات المتجر. ضع نوع المنتج أو اسمه أو رقم موديله في query، والماركة في brand، والميزانية في maxPrice. " +
+        "النتائج تُعرض للعميل كبطاقات بالصور والأسعار تلقائياً.",
       inputSchema: zodSchema(
         z.object({
-          query: z.string().max(100).describe("كلمة البحث أو اسم المنتج"),
-          category: z.string().max(50).optional().describe("اسم الفئة (اختياري)"),
+          query: z
+            .string()
+            .max(100)
+            .describe("نوع المنتج أو اسمه أو موديله، مثل: ثلاجة، غسالة 10 كغم، RFG-549. بدون الماركة وبدون أوصاف عامة مثل كبير أو رخيص"),
+          brand: z.string().max(40).optional().describe("الماركة إن ذكرها العميل، بالإنجليزية إن أمكن: LG، Samsung، Hitachi"),
+          minPrice: z.number().min(0).optional().describe("أقل سعر بالدينار العراقي"),
+          maxPrice: z.number().min(0).optional().describe("أعلى سعر بالدينار العراقي"),
+          sort: z
+            .enum(["relevance", "price_asc", "price_desc"])
+            .optional()
+            .describe("ترتيب النتائج: price_asc للأرخص أولاً، price_desc للأغلى أولاً"),
         })
       ),
-      execute: async ({ query, category }) => {
-        const products = await getCachedProducts(query, category);
-        if (!products.length) {
-          return { found: false, message: "لم أجد منتجات تطابق بحثك." };
-        }
-        return {
-          found: true,
-          count: products.length,
-          products: products.map((p) => safeProduct(p as unknown as Record<string, unknown>)),
-        };
-      },
+      execute: async (input) => searchCatalog(input),
+      toModelOutput: ({ output }) => ({
+        type: "json",
+        value: {
+          ...output,
+          products: output.products.map(forModel),
+          ...(output.found && !output.exact
+            ? { note: "لا يوجد منتج يطابق كل كلمات البحث؛ هذه أقرب النتائج." }
+            : {}),
+        },
+      }),
     }),
 
     getProductDetails: tool({
-      description: "جلب تفاصيل منتج محدد بواسطة ID أو slug",
+      description: "تفاصيل ومواصفات منتج محدد، باستخدام الـ slug من نتائج البحث",
       inputSchema: zodSchema(
         z.object({
-          productId: z.string().max(50).describe("معرف المنتج أو الـ slug"),
+          productId: z.string().max(200).describe("الـ slug أو معرف المنتج"),
         })
       ),
       execute: async ({ productId }) => {
-        try {
-          const product = await getCachedProductById(productId);
-          return { found: true, product: safeProduct(product as unknown as Record<string, unknown>) };
-        } catch {
-          return { found: false, message: "المنتج غير موجود." };
-        }
+        const detail = await getProductDetail(productId);
+        return detail ? { found: true as const, ...detail } : { found: false as const, message: "المنتج غير موجود." };
       },
+      toModelOutput: ({ output }) => ({
+        type: "json",
+        value: output.found ? { ...output, product: forModel(output.product) } : output,
+      }),
     }),
 
     getPageInfo: tool({

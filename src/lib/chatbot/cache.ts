@@ -1,5 +1,3 @@
-import { unstable_cache } from "next/cache";
-import { ProductService } from "@/lib/services/product.service";
 import { UserService } from "@/lib/services/user.service";
 import { OrderService } from "@/lib/services/order.service";
 
@@ -31,30 +29,6 @@ class InMemoryCache {
 }
 
 const memCache = new InMemoryCache();
-
-// ── Public data: Next.js unstable_cache (5min TTL) ─────────────────────────
-
-export const getCachedProducts = unstable_cache(
-  async (search?: string, category?: string) => {
-    const result = await ProductService.list({
-      search,
-      category,
-      limit: 10,
-      isActive: true,
-    });
-    return result.products;
-  },
-  ["chatbot-products"],
-  { revalidate: 300 }
-);
-
-export const getCachedProductById = unstable_cache(
-  async (id: string) => {
-    return ProductService.getById(id);
-  },
-  ["chatbot-product-by-id"],
-  { revalidate: 300 }
-);
 
 // ── User-specific data: In-Memory cache (60s TTL) ──────────────────────────
 
