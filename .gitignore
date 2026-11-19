@@ -49,5 +49,14 @@ next-env.d.ts
 # Docker volumes
 postgres_data/
 
+# Server-side SSL state (Let's Encrypt certs, ACME webroot)
+/certbot/
+
+# Local backups on the server
+.env.bak*
+.env.save
+*.bak
+*.bak-*
+
 # User uploads
 /public/uploads/

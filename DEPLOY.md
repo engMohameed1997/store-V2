@@ -110,3 +110,21 @@ docker compose down -v
 - **غيّر كلمات المرور** في `.env` قبل النشر النهائي (DB_PASSWORD, JWT secrets, MINIO_ROOT_PASSWORD)
 - **فعّل ADMIN_IP_ALLOWLIST** بقصر الوصول للوحة الإدارة على IPs موثوقة
 - استخدم **HTTPS** مستقبلاً بربط دومين + تشغيل `./scripts/init-ssl.sh domain.com email@example.com`
+
+## الإنتاج الحالي (alkhizaei.com)
+
+- المشروع على السيرفر في `/home/hussain/store`
+- الدومين خلف Cloudflare بوضع **Full (strict)**؛ الشهادة من Let's Encrypt في `certbot/conf/live/alkhizaei.com` (خارج git)
+- التجديد التلقائي: `sudo ./scripts/install-ssl-renewal.sh` (cron مرتين يومياً + reload لـ nginx)
+- لوحة MinIO غير مكشوفة للعامة (`/minio-console/` → 404)
+
+### تحديث السيرفر من git
+
+```bash
+cd ~/store
+git pull
+# تغيير nginx فقط: nginx.conf مربوط كملف مفرد، لذلك restart وليس reload
+sudo docker restart store-nginx
+# تغيير كود التطبيق: إعادة بناء + تشغيل
+sudo docker compose up -d --build app
+```

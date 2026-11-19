@@ -49,7 +49,8 @@ export function getAIModel(): LanguageModel {
         baseURL: baseUrl ?? "http://127.0.0.1:5000/v1",
         apiKey: process.env.OPENAI_API_KEY || "not-needed",
       });
-      return localOpenAI(model ?? "local-model");
+      // .chat() → /chat/completions. The default call uses the OpenAI-only Responses API.
+      return localOpenAI.chat(model ?? "local-model");
     }
     case "openai":
     default: {
@@ -58,7 +59,8 @@ export function getAIModel(): LanguageModel {
           baseURL: baseUrl,
           apiKey: process.env.OPENAI_API_KEY || "",
         });
-        return customOpenAI(model ?? "gpt-4o-mini");
+        // OpenAI-compatible gateways (OpenRouter, etc.) speak /chat/completions, not /responses.
+        return customOpenAI.chat(model ?? "gpt-4o-mini");
       }
       return openai(model ?? "gpt-4o-mini");
     }
