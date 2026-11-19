@@ -8,15 +8,17 @@ import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { MSG } from '@/lib/messages';
 import { safeNext, withNext } from '@/lib/utils/safe-next';
+import { GoogleSignInButton, GOOGLE_LOGIN_ERRORS } from '@/components/store/google-sign-in';
 
 function LoginForm() {
-  const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [identifierInput, setIdentifierInput] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get('next');
+  const [showPass, setShowPass] = useState(false);
+  // Errors from the Google sign-in redirect arrive as ?error=<code>
+  const [error, setError] = useState(() => GOOGLE_LOGIN_ERRORS[searchParams.get('error') ?? ''] ?? '');
+  const [loading, setLoading] = useState(false);
+  const [identifierInput, setIdentifierInput] = useState('');
   const { login, isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
@@ -74,7 +76,7 @@ function LoginForm() {
             تسجيل الدخول
           </h1>
           <p className="text-sm text-muted-foreground">
-            أدخل بريدك الإلكتروني للمتابعة
+            سجّل الدخول بحساب Google أو ببريدك الإلكتروني
           </p>
         </div>
 
@@ -84,6 +86,8 @@ function LoginForm() {
             {error}
           </div>
         )}
+
+        <GoogleSignInButton next={next} />
 
         <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
           {/* Honeypot */}

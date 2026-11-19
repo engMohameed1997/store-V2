@@ -10,6 +10,7 @@ import { apiErrorMessage } from '@/lib/client/api';
 import { useAuth } from '@/components/providers/auth-provider';
 import { MSG } from '@/lib/messages';
 import { safeNext, withNext } from '@/lib/utils/safe-next';
+import { GoogleSignInButton } from '@/components/store/google-sign-in';
 
 type Step = 'form' | 'otp';
 
@@ -228,6 +229,8 @@ function RegisterContent() {
           )}
 
           {step === 'form' ? (
+            <>
+            <GoogleSignInButton next={next} />
             <form onSubmit={handleSendCode} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -350,6 +353,7 @@ function RegisterContent() {
                 {loading ? 'جاري إرسال الرمز...' : 'إرسال رمز التحقق'}
               </button>
             </form>
+            </>
           ) : (
             <form onSubmit={handleVerifyAndRegister} className="animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="flex justify-center mb-6">

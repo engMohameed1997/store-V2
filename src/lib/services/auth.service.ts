@@ -22,6 +22,7 @@ import { toAuthUserDTO } from "@/lib/dto/user.dto";
 import { sealRegistrationToken, openRegistrationToken } from "@/lib/api/registration-token";
 import { sendMail } from "@/lib/email/mailer";
 import { verificationCodeEmail, passwordResetCodeEmail } from "@/lib/email/templates";
+import { GoogleSignInRejected, type GoogleProfile } from "@/lib/api/google-oauth";
 
 const SALT_ROUNDS = 12;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -295,6 +296,99 @@ export class AuthService {
       deviceName: input.deviceName,
       deviceId: input.deviceId,
     });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: toAuthUserDTO(user),
+    };
+  }
+
+  /**
+   * "Continue with Google". Accounts are matched by Google's stable user id;
+   * on first use an existing account with the same (Google-verified) email is
+   * linked, otherwise a new customer account is created. Staff accounts keep
+   * signing in with their password only.
+   */
+  static async loginWithGoogle(
+    profile: GoogleProfile,
+    meta: { ipAddress: string; userAgent: string }
+  ) {
+    const email = profile.email.trim().toLowerCase();
+    const select = {
+      id: true, email: true, phone: true, firstName: true, lastName: true,
+      role: true, avatar: true, status: true, emailVerified: true,
+    } as const;
+    const assertAllowed = (u: { role: string; status: string }) => {
+      if (u.role !== "CUSTOMER") throw new GoogleSignInRejected("staff");
+      if (u.status === "BANNED" || u.status === "SUSPENDED") throw new GoogleSignInRejected("blocked");
+    };
+
+    const linked = await db.account.findUnique({
+      where: { provider_providerAccountId: { provider: "GOOGLE", providerAccountId: profile.sub } },
+      select: { user: { select } },
+    });
+    let user = linked?.user ?? null;
+
+    if (user) {
+      assertAllowed(user);
+    } else {
+      const existing = await db.user.findFirst({ where: emailWhere(email), select });
+
+      if (existing) {
+        assertAllowed(existing);
+        // An unverified account may have been opened by someone else with this
+        // email (before sign-up required a code). Google proved ownership, so
+        // the unproven password and its sessions are dropped.
+        user = await db.user.update({
+          where: { id: existing.id },
+          data: {
+            emailVerified: true,
+            ...(existing.status === "PENDING_VERIFICATION" ? { status: "ACTIVE" as const } : {}),
+            ...(existing.emailVerified ? {} : { passwordHash: null }),
+            accounts: { create: { provider: "GOOGLE", providerAccountId: profile.sub } },
+          },
+          select,
+        });
+        if (!existing.emailVerified) await revokeAllUserTokens(existing.id);
+      } else {
+        try {
+          user = await db.user.create({
+            data: {
+              email,
+              firstName: (profile.givenName || profile.name || email.split("@")[0]).slice(0, 50),
+              lastName: (profile.familyName ?? "").slice(0, 50),
+              status: "ACTIVE",
+              emailVerified: true,
+              authProvider: "GOOGLE",
+              accounts: { create: { provider: "GOOGLE", providerAccountId: profile.sub } },
+            },
+            select,
+          });
+        } catch (err) {
+          // Unique violation: the same Google account finished in a parallel request.
+          if ((err as { code?: string })?.code === "P2002") {
+            throw Errors.conflict("تم إنشاء الحساب بالفعل. حاول تسجيل الدخول مرة أخرى.");
+          }
+          throw err;
+        }
+      }
+    }
+
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        lastLoginAt: new Date(),
+        lastLoginIp: meta.ipAddress,
+      },
+    });
+
+    const accessToken = generateAccessToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id, user.role);
+    const rtPayload = verifyRefreshToken(refreshToken);
+    await storeRefreshToken(user.id, refreshToken, rtPayload.family!, meta);
 
     return {
       accessToken,
