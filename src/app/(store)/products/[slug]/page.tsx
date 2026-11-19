@@ -7,8 +7,17 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+/** Arabic slugs arrive percent-encoded in params. */
+function decodeSlug(slug: string): string {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
+
 export default async function ProductDetailPage({ params }: Props) {
-  const { slug } = await params;
+  const slug = decodeSlug((await params).slug);
 
   try {
     const product = await ProductService.getBySlug(slug);
