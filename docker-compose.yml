@@ -63,7 +63,9 @@ services:
       ADMIN_IP_ALLOWLIST: ${ADMIN_IP_ALLOWLIST:-}
 
       # Proxy (always true — nginx is the reverse proxy)
-      TRUSTED_IP_HEADER: x-forwarded-for
+      # X-Real-IP is set by nginx from $remote_addr (real visitor IP via Cloudflare
+      # real_ip). Never use x-forwarded-for here: its first entry is client-controlled.
+      TRUSTED_IP_HEADER: x-real-ip
       BEHIND_REVERSE_PROXY: "true"
 
       # Cron
@@ -84,6 +86,11 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+
+      # AI chat daily quotas (0 = disabled)
+      CHAT_DAILY_LIMIT_PER_USER: ${CHAT_DAILY_LIMIT_PER_USER:-30}
+      CHAT_DAILY_LIMIT_PER_IP: ${CHAT_DAILY_LIMIT_PER_IP:-60}
+      CHAT_DAILY_LIMIT_GLOBAL: ${CHAT_DAILY_LIMIT_GLOBAL:-2000}
 
       # MinIO (Object Storage for Uploads)
       MINIO_ENDPOINT: http://minio:9000

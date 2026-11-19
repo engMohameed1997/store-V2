@@ -7,10 +7,31 @@ export type AIProvider = "openai" | "google" | "anthropic" | "local";
 
 export const CHAT_LIMITS = {
   MAX_USER_MESSAGE_LENGTH: 500,
+  // Assistant turns come back from the client; cap them so history can't be inflated.
+  MAX_ASSISTANT_MESSAGE_LENGTH: 2000,
   MAX_MESSAGES_PER_SESSION: 20,
-  MAX_CONTEXT_TOKENS: 4000,
+  // Character budget for history sent to the model (Arabic ≈ 1 token per 2–3 chars).
+  MAX_CONTEXT_CHARS: 6000,
+  MAX_OUTPUT_TOKENS: 600,
   CONCURRENCY_LOCK_TTL_SEC: 30,
 } as const;
+
+function envInt(name: string, fallback: number): number {
+  const n = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+/**
+ * Message quotas, tunable from .env without a rebuild.
+ * A value of 0 disables that quota.
+ */
+export function getChatQuotas() {
+  return {
+    perUserDaily: envInt("CHAT_DAILY_LIMIT_PER_USER", 30),
+    perIpDaily: envInt("CHAT_DAILY_LIMIT_PER_IP", 60),
+    globalDaily: envInt("CHAT_DAILY_LIMIT_GLOBAL", 2000),
+  };
+}
 
 /**
  * Returns true when the selected AI provider has the credentials it needs.

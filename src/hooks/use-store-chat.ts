@@ -3,10 +3,12 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { usePathname } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 export function useStoreChat() {
   const pathname = usePathname();
+  // Daily messages left, reported by the server in X-Chat-Remaining.
+  const [remaining, setRemaining] = useState<number | null>(null);
 
   const currentPage = useMemo(() => {
     const segments = pathname.split('/').filter(Boolean);
@@ -22,9 +24,16 @@ export function useStoreChat() {
         prepareSendMessagesRequest: ({ messages, body }) => ({
           body: { ...body, messages, currentPage },
         }),
+        fetch: async (input, init) => {
+          const res = await fetch(input, init);
+          const left = res.headers.get('X-Chat-Remaining');
+          if (left !== null && left !== '') setRemaining(Number(left));
+          return res;
+        },
       }),
     [currentPage]
   );
 
-  return useChat({ transport });
+  const chat = useChat({ transport });
+  return { ...chat, remaining };
 }

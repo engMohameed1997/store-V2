@@ -17,7 +17,7 @@ const RATE_LIMITS: Record<string, RateLimitConfig> = {
   search: { windowSec: 60, maxRequests: 30 },
   upload: { windowSec: 60, maxRequests: 10 },
   chat_guest: { windowSec: 60, maxRequests: 5 },
-  chat_user: { windowSec: 60, maxRequests: 15 },
+  chat_user: { windowSec: 60, maxRequests: 8 },
   chat_daily: { windowSec: 86400, maxRequests: 100 },
 };
 

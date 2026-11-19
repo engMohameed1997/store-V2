@@ -79,6 +79,11 @@ export function ChatWidget() {
         <div className="flex items-center gap-2">
           <Bot size={20} />
           <span className="font-medium text-sm">المساعد الذكي</span>
+          {chat.remaining !== null && (
+            <span className="text-[11px] opacity-80" title="الرسائل المتبقية اليوم">
+              · متبقي {chat.remaining}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {chat.messages.length > 0 && (

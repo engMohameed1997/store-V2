@@ -27,7 +27,7 @@ export function validateMessages(raw: unknown): IncomingMessage[] {
     );
   }
 
-  return raw.map((m, i) => {
+  const messages = raw.map((m, i) => {
     if (typeof m !== "object" || m === null) {
       throw new ChatGuardError(`رسالة غير صالحة في الموضع ${i}`);
     }
@@ -60,8 +60,19 @@ export function validateMessages(raw: unknown): IncomingMessage[] {
       );
     }
 
+    if (msg.role === "assistant" && content.length > CHAT_LIMITS.MAX_ASSISTANT_MESSAGE_LENGTH) {
+      throw new ChatGuardError("محتوى المحادثة غير صالح. ابدأ محادثة جديدة.", 400);
+    }
+
     return { role: msg.role as string, content };
   });
+
+  // The conversation must end with the user's new message.
+  if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
+    throw new ChatGuardError("آخر رسالة يجب أن تكون من المستخدم.", 400);
+  }
+
+  return messages;
 }
 
 export function validateCurrentPage(raw: unknown): string {
@@ -77,19 +88,20 @@ export function validateCurrentPage(raw: unknown): string {
 
 export function trimMessagesToFit(
   messages: IncomingMessage[],
-  maxTokensEstimate: number
+  maxChars: number
 ): IncomingMessage[] {
-  const estimateTokens = (text: string) => Math.ceil(text.length / 4);
-
   let total = 0;
   const result: IncomingMessage[] = [];
 
   for (let i = messages.length - 1; i >= 0; i--) {
-    const tokens = estimateTokens(messages[i].content);
-    if (total + tokens > maxTokensEstimate) break;
+    const size = messages[i].content.length;
+    if (total + size > maxChars) break;
     result.unshift(messages[i]);
-    total += tokens;
+    total += size;
   }
+
+  // History must start with a user turn so a forged assistant turn can't lead.
+  while (result.length > 0 && result[0].role !== "user") result.shift();
 
   return result;
 }
