@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, X, Sparkles, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import { Bot, X, Sparkles, RotateCcw, LogIn } from 'lucide-react';
 import { useStoreChat } from '@/hooks/use-store-chat';
 import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
@@ -37,7 +38,9 @@ export function ChatWidget() {
     }
   }, [chat.messages, chat.status]);
 
-  if (isAuthLoading || !isAuthenticated) return null;
+  // Shown to everyone so visitors know it exists; guests get a login prompt.
+  // The API itself still rejects anyone without a session.
+  if (isAuthLoading) return null;
 
   const isLoading = chat.status === 'submitted' || chat.status === 'streaming';
 
@@ -79,14 +82,14 @@ export function ChatWidget() {
         <div className="flex items-center gap-2">
           <Bot size={20} />
           <span className="font-medium text-sm">المساعد الذكي</span>
-          {chat.remaining !== null && (
+          {isAuthenticated && chat.remaining !== null && (
             <span className="text-[11px] opacity-80" title="الرسائل المتبقية اليوم">
               · متبقي {chat.remaining}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
-          {chat.messages.length > 0 && (
+          {isAuthenticated && chat.messages.length > 0 && (
             <button
               onClick={handleReset}
               aria-label="محادثة جديدة"
@@ -106,23 +109,50 @@ export function ChatWidget() {
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
-        <ChatMessages messages={chat.messages} status={chat.status} onSuggestion={handleSuggestion} />
-      </div>
-
-      {chat.error && (
-        <div className="px-4 py-2 text-xs text-destructive bg-destructive/10 border-t border-destructive/20">
-          {getFriendlyError(chat.error)}
+      {!isAuthenticated ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 px-6 py-8">
+          <Bot size={40} className="text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            مرحباً! أنا المساعد الذكي للمتجر. أساعدك تلقى المنتجات وتتابع طلباتك وتعرف تفاصيل التوصيل.
+          </p>
+          <p className="text-sm font-medium">سجّل دخولك حتى تستخدم المساعد</p>
+          <Link
+            href="/login"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-full transition"
+          >
+            <LogIn size={16} />
+            تسجيل الدخول
+          </Link>
+          <Link
+            href="/register"
+            onClick={() => setIsOpen(false)}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition"
+          >
+            ما عندك حساب؟ أنشئ حساب جديد
+          </Link>
         </div>
-      )}
+      ) : (
+        <>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
+            <ChatMessages messages={chat.messages} status={chat.status} onSuggestion={handleSuggestion} />
+          </div>
 
-      <ChatInput
-        input={input}
-        isLoading={isLoading}
-        onInputChange={setInput}
-        onSubmit={handleSend}
-        onStop={chat.stop}
-      />
+          {chat.error && (
+            <div className="px-4 py-2 text-xs text-destructive bg-destructive/10 border-t border-destructive/20">
+              {getFriendlyError(chat.error)}
+            </div>
+          )}
+
+          <ChatInput
+            input={input}
+            isLoading={isLoading}
+            onInputChange={setInput}
+            onSubmit={handleSend}
+            onStop={chat.stop}
+          />
+        </>
+      )}
     </div>
   );
 }
