@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { ProductService } from '@/lib/services/product.service';
 import { serialize } from '@/lib/utils/serialize';
 import ProductDetailClient from './product-detail-client';
@@ -19,10 +19,14 @@ function decodeSlug(slug: string): string {
 export default async function ProductDetailPage({ params }: Props) {
   const slug = decodeSlug((await params).slug);
 
+  let product;
   try {
-    const product = await ProductService.getBySlug(slug);
-    return <ProductDetailClient product={serialize(product) as any} />;
+    product = await ProductService.getBySlug(slug);
   } catch {
+    // Old Arabic or pre-rename links: same product, new slug.
+    const current = await ProductService.findSlugBySuffix(slug);
+    if (current && current !== slug) permanentRedirect(`/products/${current}`);
     notFound();
   }
+  return <ProductDetailClient product={serialize(product) as any} />;
 }

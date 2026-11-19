@@ -4,6 +4,7 @@ import { Errors } from "@/lib/api/errors";
 import type { CreateProductInput, UpdateProductInput } from "@/lib/validators/product";
 import { MAX_PAGINATION_LIMIT } from "@/lib/constants/pagination";
 import { sanitizeString } from "@/lib/api/sanitize";
+import { buildProductSlug, newSlugSuffix, slugSuffix } from "@/lib/utils/product-slug";
 
 // View deduplication: prevents viewCount inflation (1 count per IP per product per hour)
 // Uses Redis instead of in-memory Map to work correctly across multiple instances/pods.
@@ -72,28 +73,17 @@ const PRODUCT_LIST_SELECT = {
   brand: { select: { id: true, name: true, slug: true, nameAr: true } },
 };
 
-function generateSlug(name: string): string {
-  let slug = name
-    .trim()
-    .toLowerCase()
-    // Keep letters (including Arabic), numbers, spaces, and hyphens
-    .replace(/[^\p{L}\p{N}\s-]/gu, "")
-    // Replace spaces with hyphens
-    .replace(/\s+/g, "-")
-    // Remove consecutive hyphens
-    .replace(/-+/g, "-")
-    // Remove leading/trailing hyphens
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
-
-  // If slug is empty after cleaning, use a default
-  if (!slug || slug === "") {
-    slug = "product";
+/** A suffix no other product uses, so it identifies this product's links. */
+async function uniqueSlugSuffix(): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const suffix = newSlugSuffix();
+    const taken = await db.product.findFirst({
+      where: { slug: { endsWith: `-${suffix}` } },
+      select: { id: true },
+    });
+    if (!taken) return suffix;
   }
-
-  // Always append a unique suffix: 6-char random hex for collision resistance
-  const uniqueSuffix = crypto.randomBytes(3).toString("hex");
-  return `${slug}-${uniqueSuffix}`;
+  throw new Error("Could not generate a unique product slug");
 }
 
 function buildSkuCandidate(): string {
@@ -284,6 +274,20 @@ export class ProductService {
     return product;
   }
 
+  /**
+   * Current slug of the product a stale link points to (renamed product or
+   * an old Arabic slug), matched by the 6-hex suffix that never changes.
+   */
+  static async findSlugBySuffix(slug: string): Promise<string | null> {
+    const suffix = slugSuffix(slug);
+    if (!suffix) return null;
+    const product = await db.product.findFirst({
+      where: { slug: { endsWith: `-${suffix}` }, deletedAt: null },
+      select: { slug: true },
+    });
+    return product?.slug ?? null;
+  }
+
   static async create(input: CreateProductInput) {
     // ── Sanitize all free-text string fields against XSS ──────────────────
     const sanitizedInput: CreateProductInput = {
@@ -320,30 +324,31 @@ export class ProductService {
     }
 
     // Verify category exists if provided
+    let categoryName: string | null = null;
     if (sanitizedInput.categoryId) {
       const category = await db.category.findUnique({
         where: { id: sanitizedInput.categoryId, deletedAt: null },
-        select: { id: true },
+        select: { id: true, name: true },
       });
       if (!category) throw Errors.notFound("Category");
+      categoryName = category.name;
     }
 
     // Verify brand exists if provided
+    let brandName: string | null = null;
     if (sanitizedInput.brandId) {
       const brand = await db.brand.findUnique({
         where: { id: sanitizedInput.brandId, deletedAt: null },
-        select: { id: true },
+        select: { id: true, name: true },
       });
       if (!brand) throw Errors.notFound("Brand");
+      brandName = brand.name;
     }
 
-    // Generate unique slug with retry for extremely rare collisions
-    let finalSlug = generateSlug(sanitizedInput.name);
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const existing = await db.product.findUnique({ where: { slug: finalSlug }, select: { id: true } });
-      if (!existing) break;
-      finalSlug = generateSlug(sanitizedInput.name);
-    }
+    const finalSlug = buildProductSlug(
+      { name: sanitizedInput.name, brand: brandName, category: categoryName },
+      await uniqueSlugSuffix()
+    );
 
     const sku = await generateUniqueSku();
 
@@ -405,7 +410,7 @@ export class ProductService {
   static async update(id: string, input: UpdateProductInput) {
     const existing = await db.product.findUnique({
       where: { id, deletedAt: null },
-      select: { id: true, name: true, slug: true, sku: true },
+      select: { id: true, name: true, slug: true, sku: true, brandId: true, categoryId: true },
     });
     if (!existing) throw Errors.notFound("Product");
 
@@ -463,18 +468,25 @@ export class ProductService {
 
     const { images, specs, variants, branchId, ...productData } = sanitizedInput;
 
+    // The slug follows the name and brand; keeping its suffix lets old links redirect.
     let slugData = {};
-    if (sanitizedInput.name && sanitizedInput.name !== existing.name) {
-      let newSlug = generateSlug(sanitizedInput.name);
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const slugExists = await db.product.findFirst({
-          where: { slug: newSlug, id: { not: id } },
-          select: { id: true },
-        });
-        if (!slugExists) break;
-        newSlug = generateSlug(sanitizedInput.name);
-      }
-      slugData = { slug: newSlug };
+    const nameChanged = !!sanitizedInput.name && sanitizedInput.name !== existing.name;
+    const brandChanged = !!sanitizedInput.brandId && sanitizedInput.brandId !== existing.brandId;
+    if (nameChanged || brandChanged) {
+      const brandId = sanitizedInput.brandId ?? existing.brandId;
+      const categoryId = sanitizedInput.categoryId ?? existing.categoryId;
+      const brand = brandId
+        ? await db.brand.findUnique({ where: { id: brandId }, select: { name: true } })
+        : null;
+      const category = categoryId
+        ? await db.category.findUnique({ where: { id: categoryId }, select: { name: true } })
+        : null;
+      slugData = {
+        slug: buildProductSlug(
+          { name: sanitizedInput.name ?? existing.name, brand: brand?.name, category: category?.name },
+          slugSuffix(existing.slug) ?? (await uniqueSlugSuffix())
+        ),
+      };
     }
 
     // ── Use transaction: delete old images/specs + update + branch inv ────
